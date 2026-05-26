@@ -2,10 +2,55 @@
 
 import { useState, useEffect } from 'react';
 import MermaidDiagram from '@/components/MermaidDiagram';
-import SequenceModal from '@/components/SequenceModal';
+import GitHubAuth from '@/components/GitHubAuth';
+import RepoSelector from '@/components/RepoSelector';
+import FileBrowser from '@/components/FileBrowser';
+import { getGitHubService, GitHubRepo } from '@/lib/github';
 
 export default function Home() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null);
+  const [selectedFile, setSelectedFile] = useState<{ path: string; content: string } | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+
+  // Check if already authenticated on mount
+  useEffect(() => {
+    const github = getGitHubService();
+    if (github.isAuthenticated()) {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const handleAuthenticated = () => {
+    const token = localStorage.getItem('github_token');
+    if (token) {
+      const github = getGitHubService();
+      github.setToken(token);
+      setIsAuthenticated(true);
+    }
+  };
+
+  const handleLogout = () => {
+    const github = getGitHubService();
+    github.clearToken();
+    setIsAuthenticated(false);
+    setSelectedRepo(null);
+    setSelectedFile(null);
+  };
+
+  const handleSelectRepo = (repo: GitHubRepo) => {
+    setSelectedRepo(repo);
+    setSelectedFile(null);
+  };
+
+  const handleSelectFile = (path: string, content: string) => {
+    setSelectedFile({ path, content });
+  };
+
+  const handleBackToRepos = () => {
+    setSelectedRepo(null);
+    setSelectedFile(null);
+  };
 
   // Handle method click
   const handleMethodClick = (methodName: string) => {
@@ -19,7 +64,7 @@ export default function Home() {
     console.log('Modal should be:', selectedMethod !== null ? 'open' : 'closed');
   }, [selectedMethod]);
 
-  // Sample class diagram showing code structure
+  // Sample class diagram showing code structure (for demo before file is selected)
   const classDiagram = `classDiagram
     class UserService {
       +String userId
@@ -194,87 +239,136 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <main className="container mx-auto px-4 py-12">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-slate-900 dark:text-white mb-4">
-            Mermaid Class Diagram POC
-          </h1>
-          <p className="text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">
-            Interactive UML class diagrams powered by Mermaid.js in Next.js
-          </p>
-        </div>
+      {/* Show authentication if not authenticated */}
+      {!isAuthenticated && (
+        <GitHubAuth onAuthenticated={handleAuthenticated} />
+      )}
 
-        {/* Diagram Card */}
-        <div className="max-w-5xl mx-auto">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 border border-slate-200 dark:border-slate-700">
-            <div className="mb-6">
-              <h2 className="text-2xl font-semibold text-slate-800 dark:text-white mb-2">
-                Sample Application Architecture
-              </h2>
-              <p className="text-slate-600 dark:text-slate-400">
-                This diagram shows the relationships between UserService, Database, and AuthService classes.
-              </p>
-            </div>
+      {/* Show repo selector if authenticated but no repo selected */}
+      {isAuthenticated && !selectedRepo && (
+        <main className="container mx-auto px-4 py-8">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-3">
+              Select a Repository
+            </h1>
+            <p className="text-lg text-slate-600 dark:text-slate-300">
+              Choose a repository to explore and visualize its code
+            </p>
+          </div>
+          
+          <div className="max-w-3xl mx-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700">
+            <RepoSelector onSelectRepo={handleSelectRepo} onLogout={handleLogout} />
+          </div>
+        </main>
+      )}
+
+      {/* Show file browser and diagram view when repo is selected */}
+      {isAuthenticated && selectedRepo && (
+        <main className="container mx-auto px-4 py-8">
+          <div className="text-center mb-6">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
+              Code Visualization
+            </h1>
+            <p className="text-slate-600 dark:text-slate-300">
+              {selectedFile ? `Viewing: ${selectedFile.path}` : 'Select a file to visualize'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1900px] mx-auto">
             
-            <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-              <MermaidDiagram 
-                chart={classDiagram} 
-                className="flex justify-center"
-                onMethodClick={handleMethodClick}
+            {/* Left Sidebar - File Browser */}
+            <div className="lg:col-span-3 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 h-[calc(100vh-200px)] overflow-hidden">
+              <FileBrowser
+                repo={selectedRepo}
+                onSelectFile={handleSelectFile}
+                onBack={handleBackToRepos}
               />
             </div>
 
-            {/* Instruction */}
-            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <p className="text-sm text-blue-800 dark:text-blue-300 flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                💡 <strong>Try it:</strong> Click on any method (text with parentheses) to see its sequence diagram!
-              </p>
+            {/* Middle - Class Diagram */}
+            <div className="lg:col-span-5 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 border border-slate-200 dark:border-slate-700 h-[calc(100vh-200px)] overflow-auto">
+              <div className="mb-4">
+                <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-2">
+                  Class Diagram
+                </h2>
+                <p className="text-slate-600 dark:text-slate-400 text-sm">
+                  {selectedFile ? 'Click on methods to see sequence flows →' : 'Select a file from the left'}
+                </p>
+              </div>
+              
+              <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                {selectedFile ? (
+                  <div>
+                    <div className="text-center py-8 text-slate-500 dark:text-slate-400 text-sm mb-4">
+                      📄 {selectedFile.path.split('/').pop()} selected<br/>
+                      <span className="text-xs">Phase 2 will parse this file and generate diagrams</span>
+                    </div>
+                    <MermaidDiagram 
+                      chart={classDiagram} 
+                      className="flex justify-center"
+                      onMethodClick={handleMethodClick}
+                    />
+                  </div>
+                ) : (
+                  <MermaidDiagram 
+                    chart={classDiagram} 
+                    className="flex justify-center"
+                    onMethodClick={handleMethodClick}
+                  />
+                )}
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Sequence Modal */}
-        <SequenceModal
-          isOpen={selectedMethod !== null}
-          onClose={() => setSelectedMethod(null)}
-          methodName={selectedMethod || ''}
-          sequenceDiagram={getSequenceDiagram(selectedMethod || '')}
-        />
+            {/* Right - Sequence Diagram */}
+            <div className="lg:col-span-4 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 border border-slate-200 dark:border-slate-700 h-[calc(100vh-200px)] overflow-auto">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-2">
+                    Sequence Diagram
+                  </h2>
+                  {selectedMethod ? (
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      Flow: <code className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 rounded text-blue-600 dark:text-blue-400 font-mono text-xs">{selectedMethod}</code>
+                    </p>
+                  ) : (
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      Select a method
+                    </p>
+                  )}
+                </div>
+                {selectedMethod && (
+                  <button
+                    onClick={() => setSelectedMethod(null)}
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              
+              <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700 min-h-[400px]">
+                {selectedMethod ? (
+                  <MermaidDiagram 
+                    chart={getSequenceDiagram(selectedMethod)} 
+                    className="flex justify-center"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-[400px] text-slate-400">
+                    <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
+                    </svg>
+                    <p className="font-medium">Click a method</p>
+                    <p className="text-sm mt-2">Methods are blue</p>
+                  </div>
+                )}
+              </div>
+            </div>
 
-        {/* Info Section */}
-        <div className="max-w-5xl mx-auto mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-200 dark:border-slate-700">
-            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
-              📊 UML Diagrams
-            </h3>
-            <p className="text-slate-600 dark:text-slate-400 text-sm">
-              Visualize class structures, relationships, and dependencies with standard UML notation.
-            </p>
           </div>
-          
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-200 dark:border-slate-700">
-            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
-              🎨 Customizable
-            </h3>
-            <p className="text-slate-600 dark:text-slate-400 text-sm">
-              Style diagrams with colors, themes, and custom CSS. Add diff visualization easily.
-            </p>
-          </div>
-          
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-200 dark:border-slate-700">
-            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
-              ⚡ Interactive
-            </h3>
-            <p className="text-slate-600 dark:text-slate-400 text-sm">
-              Add click handlers, tooltips, and navigation to make diagrams truly interactive.
-            </p>
-          </div>
-        </div>
-      </main>
+        </main>
+      )}
     </div>
   );
 }
