@@ -128,8 +128,34 @@ export default function Home() {
   // Load sequence diagram when method is selected
   useEffect(() => {
     if (selectedMethod) {
+      console.log('[Client] Selected method:', selectedMethod);
+      console.log('[Client] Current class:', currentClass?.name);
+      console.log('[Client] Methods in class:', currentClass?.methods.length);
+      
+      if (currentClass) {
+        // Extract just the method name (before the opening parenthesis)
+        const methodNameOnly = selectedMethod.split('(')[0].replace(/^[+\-#]/, '').trim();
+        console.log('[Client] Looking for method name:', methodNameOnly);
+        
+        const method = currentClass.methods.find(m => {
+          const matches = m.name === methodNameOnly;
+          console.log(`[Client] Checking method ${m.name}, body length: ${(m.body || '').length}, matches: ${matches}`);
+          return matches;
+        });
+        
+        if (method) {
+          console.log('[Client] Found matching method:', method.name);
+          console.log('[Client] Method body length:', (method.body || '').length);
+          console.log('[Client] Method body preview:', (method.body || '').substring(0, 200));
+        } else {
+          console.log('[Client] No matching method found!');
+          console.log('[Client] Available methods:', currentClass.methods.map(m => m.name).join(', '));
+        }
+      }
+      
       setLoadingSequence(true);
       getSequenceDiagram(selectedMethod).then(diagram => {
+        console.log('[Client] Sequence diagram generated, length:', diagram.length);
         setSequenceDiagram(diagram);
         setLoadingSequence(false);
       });
@@ -146,13 +172,15 @@ export default function Home() {
         Note over Client: No class selected`;
     }
 
-    // Find the method in the current class
-    const method = currentClass.methods.find(m => {
-      const fullMethodName = `${m.name}(${m.parameters.join(', ')})`;
-      return fullMethodName === methodName || m.name === methodName.split('(')[0];
-    });
+    // Extract just the method name (strip visibility symbols and parameters)
+    const methodNameOnly = methodName.split('(')[0].replace(/^[+\-#]/, '').trim();
+    console.log('[Client getSequenceDiagram] Looking for:', methodNameOnly);
+
+    // Find the method in the current class by name only
+    const method = currentClass.methods.find(m => m.name === methodNameOnly);
 
     if (method) {
+      console.log('[Client getSequenceDiagram] Found method, sending to API');
       try {
         // Generate sequence diagram from the actual parsed method via API
         const response = await fetch('/api/sequence', {
@@ -167,10 +195,15 @@ export default function Home() {
         if (response.ok) {
           const data = await response.json();
           return data.sequenceDiagram;
+        } else {
+          console.error('[Client getSequenceDiagram] API error:', response.status);
         }
       } catch (error) {
-        console.error('Failed to generate sequence diagram:', error);
+        console.error('[Client getSequenceDiagram] Failed to generate sequence diagram:', error);
       }
+    } else {
+      console.log('[Client getSequenceDiagram] Method not found!');
+      console.log('[Client getSequenceDiagram] Available:', currentClass.methods.map(m => m.name).join(', '));
     }
 
     // Fallback for demo methods
