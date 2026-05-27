@@ -131,18 +131,9 @@ export default function C4OverviewPage() {
     console.log('Available metadata:', metadata);
     
     if (currentLevel === 'context') {
-      // Context → Container: Click on main system (repo name) goes to container view
-      console.log('Context level - checking if', elementId, 'matches repo:', selectedRepo?.name);
-      
-      // Match if element text is the repo name (case-insensitive)
-      if (elementId.toLowerCase() === selectedRepo?.name.toLowerCase()) {
-        console.log('✅ MATCH! Navigating to container view');
-        setCurrentLevel('container');
-      } else {
-        console.log('❌ NO MATCH');
-        console.log('  Clicked:', elementId.toLowerCase());
-        console.log('  Expected:', selectedRepo?.name.toLowerCase());
-      }
+      // Context → Container: Click on ANY element goes to container view (demo illusion)
+      console.log('✅ Context element clicked - navigating to container view');
+      setCurrentLevel('container');
     } else if (currentLevel === 'container') {
       // Container → Component: Click on a folder name
       const folders = metadata.container?.folders || [];
@@ -162,25 +153,34 @@ export default function C4OverviewPage() {
         console.log('❌ No matching folder - available:', folders);
       }
     } else if (currentLevel === 'component') {
-      // Component → Code View: Click on a file name
+      // Component → Code View: Click on a layer or file
       const files = metadata.component?.files || [];
       const folderPath = metadata.component?.folderPath || selectedFolder;
+      const isLayerView = metadata.component?.isLayerView || false;
       
       console.log('Available files:', files);
+      console.log('Is layer view:', isLayerView);
       
-      // Check if clicked text matches any file name (with or without extension)
-      const matchedFile = files.find((f: string) => {
-        const fileWithoutExt = f.replace(/\.(ts|tsx|js|jsx)$/, '');
-        return elementId.toLowerCase() === f.toLowerCase() ||
-               elementId.toLowerCase() === fileWithoutExt.toLowerCase();
-      });
-      
-      if (matchedFile) {
-        const filePath = `${folderPath}/${matchedFile}`;
-        console.log('✅ File clicked:', matchedFile, '→', filePath);
-        window.location.href = `/?file=${encodeURIComponent(filePath)}`;
+      if (isLayerView) {
+        // Clicking on architectural layers - navigate to that layer folder
+        const layerPath = `${folderPath}/${elementId}`;
+        console.log('✅ Layer clicked:', elementId, '→', layerPath);
+        window.location.href = `/?folder=${encodeURIComponent(layerPath)}`;
       } else {
-        console.log('❌ No matching file - available:', files);
+        // Clicking on actual files
+        const matchedFile = files.find((f: string) => {
+          const fileWithoutExt = f.replace(/\.(ts|tsx|js|jsx)$/, '');
+          return elementId.toLowerCase() === f.toLowerCase() ||
+                 elementId.toLowerCase() === fileWithoutExt.toLowerCase();
+        });
+        
+        if (matchedFile) {
+          const filePath = `${folderPath}/${matchedFile}`;
+          console.log('✅ File clicked:', matchedFile, '→', filePath);
+          window.location.href = `/?file=${encodeURIComponent(filePath)}`;
+        } else {
+          console.log('❌ No matching file - available:', files);
+        }
       }
     }
   };
@@ -305,9 +305,11 @@ export default function C4OverviewPage() {
                   <p className="font-medium mb-1">💡 Interactive Navigation:</p>
                   <ul className="list-disc list-inside space-y-1 text-xs">
                     <li>Click on boxes/elements to drill down to the next level</li>
-                    <li>Context → Container → Component → Code</li>
+                    <li>Context → Container → Component (Layers) → Code Files</li>
                     <li>Use the level buttons above to navigate back up</li>
-                    {currentLevel === 'component' && <li className="font-medium">🎯 Currently viewing: {selectedFolder}/</li>}
+                    {currentLevel === 'context' && <li className="font-medium">🎯 Click on any element to view containers</li>}
+                    {currentLevel === 'component' && selectedFolder === 'src' && <li className="font-medium">🎯 Click on a layer to explore its files</li>}
+                    {currentLevel === 'component' && selectedFolder !== 'src' && <li className="font-medium">🎯 Currently viewing: {selectedFolder}/</li>}
                   </ul>
                 </div>
               </div>

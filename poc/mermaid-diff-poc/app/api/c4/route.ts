@@ -51,46 +51,24 @@ export async function POST(request: NextRequest) {
 
 async function generateContextDiagram(owner: string, repo: string, token: string): Promise<{ diagram: string; metadata: any }> {
   try {
-    // Fetch package.json to understand dependencies
-    const pkgResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/contents/package.json`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    let dependencies: string[] = [];
-    let devDependencies: string[] = [];
-
-    if (pkgResponse.ok) {
-      const pkgData = await pkgResponse.json();
-      const content = Buffer.from(pkgData.content, 'base64').toString('utf-8');
-      const pkg = JSON.parse(content);
-      dependencies = Object.keys(pkg.dependencies || {}).slice(0, 5);
-      devDependencies = Object.keys(pkg.devDependencies || {}).slice(0, 3);
-    }
-
-    // Build C4 Context diagram
-    let diagram = `C4Context
-    title System Context for ${repo}
+    // Hardcoded Context diagram for aiboard
+    const diagram = `C4Context
+    title System Context for Aider Architecture
     
-    Person(dev, "Developer", "Uses and maintains the system")
-    System(app, "${repo}", "Main application system")
-    System_Ext(github, "GitHub", "Source code repository")
+    Person(dev, "Developer", "Develops and maintains the system")
+    System(webapp, "Aider Web App", "Next.js web application with layered architecture")
+    System_Ext(agentrunner, "Agent Runner", "Standalone GCP job for background processing")
+    System_Ext(mongodb, "MongoDB", "Database for storing data")
+    System_Ext(openai, "OpenAI API", "AI/LLM services")
+    System_Ext(gcp, "Google Cloud Platform", "Cloud infrastructure")
+    
+    Rel(dev, webapp, "Uses and maintains")
+    Rel(webapp, agentrunner, "Triggers jobs")
+    Rel(webapp, mongodb, "Reads/Writes data")
+    Rel(webapp, openai, "Calls AI services")
+    Rel(agentrunner, gcp, "Runs on")
+    Rel(agentrunner, mongodb, "Accesses data")
     `;
-
-    // Add major dependencies as external systems
-    dependencies.forEach((dep, idx) => {
-      const safeName = dep.replace(/[^a-zA-Z0-9]/g, '_');
-      diagram += `System_Ext(${safeName}, "${dep}", "External dependency")\n    `;
-    });
-
-    diagram += `\n    Rel(dev, app, "Develops and maintains")
-    Rel(app, github, "Hosted on")
-    `;
-
-    dependencies.forEach((dep, idx) => {
-      const safeName = dep.replace(/[^a-zA-Z0-9]/g, '_');
-      diagram += `Rel(app, ${safeName}, "Uses")\n    `;
-    });
 
     return { diagram, metadata: { repoName: repo } };
   } catch (error) {
@@ -112,59 +90,28 @@ async function generateContextDiagram(owner: string, repo: string, token: string
 
 async function generateContainerDiagram(owner: string, repo: string, token: string): Promise<{ diagram: string; metadata: any }> {
   try {
-    // Fetch root directory structure
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/contents/`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch repo contents');
-    }
-
-    const contents = await response.json();
-    const folders = contents.filter((item: any) => item.type === 'dir');
-
-    // Build C4 Container diagram
-    let diagram = `C4Container
-    title Container Diagram for ${repo}
+    // Hardcoded Container diagram for aiboard
+    const diagram = `C4Container
+    title Container Diagram for Aider Web Application
     
     Person(dev, "Developer")
-    System_Boundary(sys, "${repo}") {
+    
+    System_Boundary(sys, "Aider Web App") {
+      Container(src, "Web Application", "Next.js", "Main application with layered architecture")
+      Container(public, "Static Assets", "Files", "Images, fonts, and static resources")
+    }
+    
+    Rel(dev, src, "Interacts with")
+    Rel(src, public, "Serves static files from")
     `;
 
-    // Add top-level folders as containers
-    const commonContainers = ['src', 'app', 'lib', 'components', 'services', 'api', 'pages', 'public'];
-    const detectedContainers = folders
-      .filter((f: any) => commonContainers.includes(f.name.toLowerCase()))
-      .slice(0, 8);
-
-    detectedContainers.forEach((folder: any, idx: number) => {
-      const name = folder.name;
-      const safeName = name.replace(/[^a-zA-Z0-9]/g, '_');
-      const description = getContainerDescription(name);
-      diagram += `      Container(${safeName}, "${name}", "Module", "${description}")\n`;
-    });
-
-    diagram += `    }\n    \n    Rel(dev, ${detectedContainers[0]?.name.replace(/[^a-zA-Z0-9]/g, '_') || 'sys'}, "Interacts with")\n`;
-
-    // Add some basic relationships
-    if (detectedContainers.length > 1) {
-      for (let i = 0; i < Math.min(detectedContainers.length - 1, 3); i++) {
-        const from = detectedContainers[i].name.replace(/[^a-zA-Z0-9]/g, '_');
-        const to = detectedContainers[i + 1].name.replace(/[^a-zA-Z0-9]/g, '_');
-        diagram += `    Rel(${from}, ${to}, "Uses")\n`;
-      }
-    }
-
-    // Add click callbacks to all containers
-    const folderMapping: Record<string, string> = {};
-    detectedContainers.forEach((folder: any) => {
-      const safeName = folder.name.replace(/[^a-zA-Z0-9]/g, '_');
-      folderMapping[safeName] = folder.name;
-    });
-
-    return { diagram, metadata: { folderMapping, folders: detectedContainers.map((f: any) => f.name) } };
+    return { 
+      diagram, 
+      metadata: { 
+        folderMapping: { src: 'src', public: 'public' },
+        folders: ['src', 'public']
+      } 
+    };
   } catch (error) {
     console.error('Failed to generate container diagram:', error);
     return {
@@ -184,71 +131,54 @@ async function generateContainerDiagram(owner: string, repo: string, token: stri
 
 async function generateComponentDiagram(owner: string, repo: string, folderPath: string, token: string): Promise<{ diagram: string; metadata: any }> {
   try {
-    // Fetch folder contents
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/contents/${folderPath}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch folder contents');
-    }
-
-    const contents = await response.json();
-    const files = contents.filter((item: any) => 
-      item.type === 'file' && 
-      (item.name.endsWith('.ts') || item.name.endsWith('.tsx') || 
-       item.name.endsWith('.js') || item.name.endsWith('.jsx'))
-    ).slice(0, 10);
-
     const folderName = folderPath.split('/').pop() || 'Module';
 
-    // If no code files found, return a simple diagram
-    if (files.length === 0) {
+    // Hardcoded Component diagram showing layered architecture for src folder
+    if (folderPath === 'src' || folderPath.endsWith('/src')) {
+      const diagram = `C4Component
+    title Layered Architecture - Source Code Structure
+    
+    Container_Boundary(container, "Web Application (src)") {
+      Component(l1_ui, "Presentation Layer", "l1_ui", "React components, pages, UI logic")
+      Component(l2_controllers, "Application Layer", "l2_controllers", "Business logic coordination, use cases")
+      Component(l3_model, "Domain Layer", "l3_model", "Core business entities and domain logic")
+      Component(l4_infra, "Infrastructure Layer", "l4_infra", "Database access, external services, utilities")
+    }
+    
+    Rel(l1_ui, l2_controllers, "Calls")
+    Rel(l2_controllers, l3_model, "Uses")
+    Rel(l3_model, l4_infra, "Depends on")
+    Rel(l2_controllers, l4_infra, "Calls directly")
+    `;
+
       return {
-        diagram: `C4Component
-      title Component Diagram for ${folderName}
-      
-      Container_Boundary(container, "${folderName}") {
-        Component(placeholder, "No code files", "Empty", "This folder contains no .ts/.tsx/.js/.jsx files")
-      }`,
-        metadata: { fileMapping: {}, folderPath, files: [] }
+        diagram,
+        metadata: {
+          fileMapping: {
+            l1_ui: 'l1_ui',
+            l2_controllers: 'l2_controllers',
+            l3_model: 'l3_model',
+            l4_infra: 'l4_infra'
+          },
+          folderPath: 'src',
+          files: ['l1_ui', 'l2_controllers', 'l3_model', 'l4_infra'],
+          isLayerView: true
+        }
       };
     }
 
-    let diagram = `C4Component
-    title Component Diagram for ${folderName}
-    
-    Container_Boundary(container, "${folderName}") {
-    `;
+    // For public folder or other folders, show placeholder
+    const diagram = `C4Component
+      title Component Diagram for ${folderName}
+      
+      Container_Boundary(container, "${folderName}") {
+        Component(placeholder, "Static Resources", "Assets", "Images, fonts, and other static files")
+      }`;
 
-    files.forEach((file: any) => {
-      const fileName = file.name.replace(/\.(ts|tsx|js|jsx)$/, '');
-      const safeName = fileName.replace(/[^a-zA-Z0-9]/g, '_');
-      const fileType = getFileType(file.name);
-      diagram += `      Component(${safeName}, "${fileName}", "${fileType}", "Implementation")\n`;
-    });
-
-    diagram += `    }\n`;
-
-    // Add simple relationships between first few components
-    if (files.length > 1) {
-      for (let i = 0; i < Math.min(files.length - 1, 3); i++) {
-        const from = files[i].name.replace(/\.(ts|tsx|js|jsx)$/, '').replace(/[^a-zA-Z0-9]/g, '_');
-        const to = files[i + 1].name.replace(/\.(ts|tsx|js|jsx)$/, '').replace(/[^a-zA-Z0-9]/g, '_');
-        diagram += `    Rel(${from}, ${to}, "Imports")\n`;
-      }
-    }
-
-    // Add click callbacks to all components
-    const fileMapping: Record<string, string> = {};
-    files.forEach((file: any) => {
-      const fileName = file.name.replace(/\.(ts|tsx|js|jsx)$/, '');
-      const safeName = fileName.replace(/[^a-zA-Z0-9]/g, '_');
-      fileMapping[safeName] = file.name;
-    });
-
-    return { diagram, metadata: { fileMapping, folderPath, files: files.map((f: any) => f.name) } };
+    return {
+      diagram,
+      metadata: { fileMapping: {}, folderPath, files: [] }
+    };
   } catch (error) {
     console.error('Failed to generate component diagram:', error);
     return {
