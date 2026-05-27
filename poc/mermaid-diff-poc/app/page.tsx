@@ -206,11 +206,6 @@ export default function Home() {
       console.log('[Client getSequenceDiagram] Available:', currentClass.methods.map(m => m.name).join(', '));
     }
 
-    // Fallback for demo methods
-    if (sequenceDiagrams[methodName]) {
-      return sequenceDiagrams[methodName];
-    }
-
     // Default generic diagram
     return `sequenceDiagram
       participant Client
@@ -228,157 +223,6 @@ export default function Home() {
     console.log('selectedMethod changed to:', selectedMethod);
     console.log('Modal should be:', selectedMethod !== null ? 'open' : 'closed');
   }, [selectedMethod]);
-
-  // Sample class diagram showing code structure (for demo before file is selected)
-  const classDiagram = `classDiagram
-    class UserService {
-      +String userId
-      +String email
-      +createUser(data)
-      +deleteUser(id)
-      +updateUser(id, data)
-      +getUserById(id)
-    }
-    
-    class Database {
-      +String connectionString
-      +connect()
-      +query(sql)
-      +insert(table, data)
-      +update(table, id, data)
-      +delete(table, id)
-    }
-    
-    class AuthService {
-      +String secretKey
-      +login(email, password)
-      +logout(token)
-      +validateToken(token)
-      +refreshToken(token)
-    }
-    
-    UserService --> Database : uses
-    UserService --> AuthService : authenticates
-    AuthService --> Database : stores tokens
-  `;
-
-  // Sequence diagrams for different methods
-  const sequenceDiagrams: Record<string, string> = {
-    'createUser(data)': `sequenceDiagram
-      participant Client
-      participant UserService
-      participant AuthService
-      participant Database
-      
-      Client->>+UserService: createUser(data)
-      UserService->>+AuthService: validateToken(token)
-      AuthService->>+Database: query("SELECT * FROM sessions")
-      Database-->>-AuthService: session data
-      AuthService-->>-UserService: token valid
-      
-      UserService->>UserService: validate user data
-      UserService->>+Database: insert("users", data)
-      Database-->>-UserService: new user id
-      
-      UserService->>+Database: insert("audit_log", action)
-      Database-->>-UserService: log created
-      
-      UserService-->>-Client: user created successfully`,
-    
-    'deleteUser(id)': `sequenceDiagram
-      participant Client
-      participant UserService
-      participant AuthService
-      participant Database
-      
-      Client->>+UserService: deleteUser(id)
-      UserService->>+AuthService: validateToken(token)
-      AuthService-->>-UserService: token valid
-      
-      UserService->>+Database: query("SELECT * FROM users WHERE id=?", id)
-      Database-->>-UserService: user data
-      
-      alt user exists
-        UserService->>+Database: delete("users", id)
-        Database-->>-UserService: deleted
-        UserService->>+Database: insert("audit_log", "user_deleted")
-        Database-->>-UserService: logged
-        UserService-->>Client: user deleted
-      else user not found
-        UserService-->>Client: error: user not found
-      end`,
-    
-    'login(email, password)': `sequenceDiagram
-      participant Client
-      participant AuthService
-      participant Database
-      
-      Client->>+AuthService: login(email, password)
-      AuthService->>+Database: query("SELECT * FROM users WHERE email=?")
-      Database-->>-AuthService: user data
-      
-      alt user exists
-        AuthService->>AuthService: verify password hash
-        alt password valid
-          AuthService->>AuthService: generate JWT token
-          AuthService->>+Database: insert("sessions", token)
-          Database-->>-AuthService: session created
-          AuthService-->>Client: { token, user }
-        else password invalid
-          AuthService-->>Client: error: invalid credentials
-        end
-      else user not found
-        AuthService-->>Client: error: user not found
-      end`,
-    
-    'query(sql)': `sequenceDiagram
-      participant Service
-      participant Database
-      participant ConnectionPool
-      participant PostgreSQL
-      
-      Service->>+Database: query(sql)
-      Database->>+ConnectionPool: getConnection()
-      ConnectionPool-->>-Database: connection
-      
-      Database->>Database: sanitize SQL
-      Database->>Database: prepare statement
-      
-      Database->>+PostgreSQL: execute query
-      PostgreSQL->>PostgreSQL: parse SQL
-      PostgreSQL->>PostgreSQL: execute query plan
-      PostgreSQL-->>-Database: result set
-      
-      Database->>+ConnectionPool: releaseConnection()
-      ConnectionPool-->>-Database: released
-      
-      Database-->>-Service: query results`,
-
-    'validateToken(token)': `sequenceDiagram
-      participant Service
-      participant AuthService
-      participant Database
-      
-      Service->>+AuthService: validateToken(token)
-      AuthService->>AuthService: verify JWT signature
-      
-      alt signature valid
-        AuthService->>AuthService: check expiration
-        alt not expired
-          AuthService->>+Database: query("SELECT * FROM sessions")
-          Database-->>-AuthService: session data
-          alt session exists
-            AuthService-->>Service: token valid
-          else session not found
-            AuthService-->>Service: error: session expired
-          end
-        else token expired
-          AuthService-->>Service: error: token expired
-        end
-      else signature invalid
-        AuthService-->>Service: error: invalid token
-      end`
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
@@ -415,6 +259,17 @@ export default function Home() {
             <p className="text-slate-600 dark:text-slate-300">
               {selectedFile ? `Viewing: ${selectedFile.path}` : 'Select a file to visualize'}
             </p>
+            <div className="mt-2">
+              <a
+                href="/c4"
+                className="inline-flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+                View C4 Architecture Overview
+              </a>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1900px] mx-auto">
@@ -468,15 +323,18 @@ export default function Home() {
                     )}
                   </div>
                 ) : (
-                  <div>
-                    <div className="text-center py-4 text-slate-500 dark:text-slate-400 text-sm mb-4">
-                      👈 Select a file to see its class structure
+                  <div className="text-center py-12 text-slate-500 dark:text-slate-400">
+                    <svg className="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p className="font-medium mb-2">Select a file to get started</p>
+                    <p className="text-sm mb-4">Choose a TypeScript or JavaScript file from the left panel</p>
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm text-blue-700 dark:text-blue-300">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Tip: For system overview, check out the C4 Architecture page above
                     </div>
-                    <MermaidDiagram 
-                      chart={classDiagram} 
-                      className="flex justify-center"
-                      onMethodClick={handleMethodClick}
-                    />
                   </div>
                 )}
               </div>
