@@ -13,6 +13,7 @@ export default function FileBrowser({ repo, onSelectFile, onBack }: FileBrowserP
   const [currentPath, setCurrentPath] = useState('');
   const [files, setFiles] = useState<GitHubFile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingFile, setLoadingFile] = useState<string | null>(null);
   const [pathHistory, setPathHistory] = useState<string[]>(['']);
 
   useEffect(() => {
@@ -54,7 +55,7 @@ export default function FileBrowser({ repo, onSelectFile, onBack }: FileBrowserP
       
       if (hasCodeExtension) {
         try {
-          setLoading(true);
+          setLoadingFile(file.path);
           const github = getGitHubService();
           const content = await github.getFileContent(
             repo.owner.login,
@@ -66,7 +67,7 @@ export default function FileBrowser({ repo, onSelectFile, onBack }: FileBrowserP
           console.error('Failed to load file content:', error);
           alert('Failed to load file content');
         } finally {
-          setLoading(false);
+          setLoadingFile(null);
         }
       } else {
         alert('Only code files (TypeScript, JavaScript, Python, etc.) are supported');
@@ -174,7 +175,8 @@ export default function FileBrowser({ repo, onSelectFile, onBack }: FileBrowserP
               <button
                 key={file.sha}
                 onClick={() => handleFileClick(file)}
-                className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors text-left"
+                disabled={loadingFile === file.path}
+                className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors text-left disabled:opacity-50 disabled:cursor-wait"
               >
                 <div className="flex-shrink-0 w-6 flex items-center justify-center">
                   {getFileIcon(file)}
@@ -182,11 +184,13 @@ export default function FileBrowser({ repo, onSelectFile, onBack }: FileBrowserP
                 <span className="flex-1 truncate text-sm text-slate-900 dark:text-white">
                   {file.name}
                 </span>
-                {file.type === 'dir' && (
+                {loadingFile === file.path ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                ) : file.type === 'dir' ? (
                   <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
-                )}
+                ) : null}
               </button>
             ))}
           </div>
