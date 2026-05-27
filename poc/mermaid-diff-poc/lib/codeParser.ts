@@ -127,16 +127,55 @@ export class CodeParser {
 
   // Sanitize for Mermaid - more aggressive for diagram generation
   private sanitizeForMermaid(text: string): string {
+    if (!text) return 'value';
+    
     // Replace any characters that break Mermaid syntax
-    return text
-      .replace(/\{[^}]*\}/g, 'Object')  // Replace inline objects
-      .replace(/\[[^\]]*\]/g, 'Array')  // Replace inline arrays
-      .replace(/[<>]/g, '')             // Remove generics
-      .replace(/[{}()\[\]]/g, '')       // Remove all brackets
-      .replace(/\|/g, 'or')             // Replace unions
-      .replace(/:/g, '')                // Remove colons that might confuse Mermaid
-      .replace(/;/g, '')                // Remove semicolons
+    let result = String(text)
+      .replace(/\{[^}]*\}/g, 'Object')     // Replace inline objects
+      .replace(/\[[^\]]*\]/g, 'Array')     // Replace inline arrays
+      .replace(/<[^>]*>/g, '')             // Remove generics content
+      .replace(/[<>]/g, '')                // Remove any remaining angle brackets
+      .replace(/[{}()\[\]]/g, '')          // Remove all brackets and parens
+      .replace(/\|/g, 'or')                // Replace unions
+      .replace(/[;:,]/g, ' ')              // Replace separators with spaces
+      .replace(/[^\w\s\-_.]/g, ' ')        // Replace any non-alphanumeric with spaces
+      .replace(/\s+/g, ' ')                // Collapse multiple spaces
       .trim();
+    
+    // If result starts with a number, prefix with underscore (Mermaid doesn't like leading numbers)
+    if (/^\d/.test(result)) {
+      result = '_' + result;
+    }
+    
+    // Limit length to avoid overly long text
+    if (result.length > 50) {
+      result = result.substring(0, 47) + '...';
+    }
+    
+    // If result is empty or just whitespace, return default
+    if (!result || result.trim() === '') {
+      return 'value';
+    }
+    
+    // Final check: ensure it's a valid identifier (starts with letter or underscore)
+    if (!/^[a-zA-Z_]/.test(result)) {
+      result = 'val_' + result.replace(/^[^a-zA-Z_]+/, '');
+    }
+    
+    return result;
+  }
+
+  // Validate and clean each line of the diagram
+  private cleanDiagramLine(line: string): string {
+    // Remove any control characters, non-printable characters, and trailing spaces
+    let cleaned = line
+      .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+      .replace(/\s+$/g, ''); // Remove trailing whitespace but keep leading (for indentation)
+    
+    // Ensure no line ends with invalid characters
+    cleaned = cleaned.replace(/[^\w\s\-_.()>+:]$/g, '');
+    
+    return cleaned;
   }
 
   private getVisibility(node: PropertyDeclaration | MethodDeclaration): string {
@@ -214,13 +253,14 @@ export class CodeParser {
       if (bodyPreview && bodyPreview.length > 0) {
         // Show first few lines of actual code
         const lines = bodyPreview.split('\n').slice(0, 5);
-        const preview = lines.join('\\n').substring(0, 200);
+        const preview = this.sanitizeForMermaid(lines.join(' ').substring(0, 200));
         diagram += `  Note over ${className}: ${preview}...\n`;
       } else {
         diagram += `  Note over ${className}: Empty or abstract method\n`;
       }
       
-      diagram += `  ${className}-->>-Client: ${method.returnType}\n`;
+      const sanitizedReturnType = this.sanitizeForMermaid(method.returnType);
+      diagram += `  ${className}-->>-Client: ${sanitizedReturnType}\n`;
     } else {
       diagram += `  Client->>+${className}: ${method.name}()\n`;
       
@@ -238,42 +278,59 @@ export class CodeParser {
       
       for (const item of analysis.sequence) {
         if (item.type === 'condition') {
-          diagram += `${indent}alt ${item.condition}\n`;
+          const sanitizedCondition = this.sanitizeForMermaid(item.condition);
+          diagram += `${indent}alt ${sanitizedCondition}\n`;
           indent += '  ';
         } else if (item.type === 'else') {
           indent = indent.substring(0, indent.length - 2);
-          diagram += `${indent}else ${item.condition || 'otherwise'}\n`;
+          const sanitizedCondition = this.sanitizeForMermaid(item.condition || 'otherwise');
+          diagram += `${indent}else ${sanitizedCondition}\n`;
           indent += '  ';
         } else if (item.type === 'end') {
           indent = indent.substring(0, indent.length - 2);
           diagram += `${indent}end\n`;
         } else if (item.type === 'call') {
           const target = item.object || className;
-          diagram += `${indent}${className}->>+${target}: ${item.method}(${item.args || ''})\n`;
+          const sanitizedMethod = this.sanitizeForMermaid(item.method);
+          const sanitizedArgs = this.sanitizeForMermaid(item.args || '');
+          const sanitizedReturn = this.sanitizeForMermaid(item.returnType || 'result');
+          
+          diagram += `${indent}${className}->>+${target}: ${sanitizedMethod}(${sanitizedArgs})\n`;
           
           // Add note for important calls
           if (this.isImportantCall(item.method)) {
             diagram += `${indent}Note right of ${target}: ${this.getCallDescription(item.method)}\n`;
           }
           
-          diagram += `${indent}${target}-->>-${className}: ${item.returnType || 'result'}\n`;
+          diagram += `${indent}${target}-->>-${className}: ${sanitizedReturn}\n`;
         } else if (item.type === 'internal') {
           // Internal method call on same class
-          diagram += `${indent}${className}->>${className}: ${item.method}(${item.args || ''})\n`;
+          const sanitizedMethod = this.sanitizeForMermaid(item.method);
+          const sanitizedArgs = this.sanitizeForMermaid(item.args || '');
+          diagram += `${indent}${className}->>${className}: ${sanitizedMethod}(${sanitizedArgs})\n`;
         } else if (item.type === 'note') {
-          diagram += `${indent}Note over ${className}: ${item.text}\n`;
+          const sanitizedText = this.sanitizeForMermaid(item.text);
+          diagram += `${indent}Note over ${className}: ${sanitizedText}\n`;
         } else if (item.type === 'loop') {
-          diagram += `${indent}loop ${item.condition}\n`;
+          const sanitizedCondition = this.sanitizeForMermaid(item.condition);
+          diagram += `${indent}loop ${sanitizedCondition}\n`;
           indent += '  ';
         } else if (item.type === 'error') {
-          diagram += `${indent}Note over ${className}: ⚠️ ${item.text}\n`;
+          const sanitizedText = this.sanitizeForMermaid(item.text);
+          diagram += `${indent}Note over ${className}: ⚠️ ${sanitizedText}\n`;
         }
       }
 
-      diagram += `  ${className}-->>-Client: ${method.returnType}\n`;
+      const sanitizedReturnType = this.sanitizeForMermaid(method.returnType);
+      diagram += `  ${className}-->>-Client: ${sanitizedReturnType}\n`;
     }
 
+    // Clean and validate the entire diagram
+    const lines = diagram.split('\n').map(line => this.cleanDiagramLine(line));
+    diagram = lines.join('\n');
+
     console.log('Generated diagram length:', diagram.length);
+    console.log('Generated diagram:\n', diagram);
     return diagram;
   }
 
@@ -302,6 +359,7 @@ export class CodeParser {
     
     let braceDepth = 0;
     let detectedCalls = 0;
+    const openBlocks: string[] = []; // Track what blocks are open
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
@@ -310,46 +368,82 @@ export class CodeParser {
       if (!line) continue;
 
       // Track brace depth
-      braceDepth += (line.match(/\{/g) || []).length;
-      braceDepth -= (line.match(/\}/g) || []).length;
+      const openBraces = (line.match(/\{/g) || []).length;
+      const closeBraces = (line.match(/\}/g) || []).length;
+      
+      // Closing brace at start - close any open blocks first
+      if (line.startsWith('}')) {
+        while (openBlocks.length > 0 && (openBlocks[openBlocks.length - 1] === 'if' || 
+               openBlocks[openBlocks.length - 1] === 'loop' ||
+               openBlocks[openBlocks.length - 1] === 'else')) {
+          sequence.push({ type: 'end' });
+          openBlocks.pop();
+        }
+      }
+      
+      braceDepth += openBraces - closeBraces;
 
       // Detect if statements
-      const ifMatch = line.match(/^if\s*\((.*?)\)\s*\{?/);
+      const ifMatch = line.match(/^if\s*\((.*?)\)\s*(\{?)/);
       if (ifMatch) {
         const condition = ifMatch[1].substring(0, 60);
-        conditions.push({ type: 'if', condition });
-        sequence.push({ type: 'condition', condition });
+        const hasOpenBrace = ifMatch[2] === '{';
+        
+        // Only track as a block if it has an opening brace
+        // Single-line if statements without braces don't need closing
+        if (hasOpenBrace || line.includes('{')) {
+          conditions.push({ type: 'if', condition });
+          sequence.push({ type: 'condition', condition });
+          openBlocks.push('if');
+        }
+        // Skip single-line if statements - they're not blocks
         continue;
       }
 
       // Detect else statements
       if (line.match(/^\}\s*else\s*if\s*\(/)) {
+        if (openBlocks[openBlocks.length - 1] === 'if') {
+          sequence.push({ type: 'end' });
+          openBlocks.pop();
+        }
         const elseIfMatch = line.match(/else\s*if\s*\((.*?)\)/);
-        sequence.push({ type: 'else', condition: elseIfMatch ? elseIfMatch[1].substring(0, 60) : 'otherwise' });
+        const condition = elseIfMatch ? elseIfMatch[1].substring(0, 60) : 'otherwise';
+        sequence.push({ type: 'condition', condition });
+        openBlocks.push('if');
         continue;
       } else if (line.match(/^\}\s*else\s*\{/) || line.match(/^else\s*\{?/)) {
+        if (openBlocks[openBlocks.length - 1] === 'if') {
+          sequence.push({ type: 'end' });
+          openBlocks.pop();
+        }
         sequence.push({ type: 'else' });
+        openBlocks.push('else');
         continue;
       }
 
-      // Detect end of blocks (closing braces at start of line)
-      if (line === '}' && braceDepth < 0) {
-        sequence.push({ type: 'end' });
-        braceDepth = 0;
-        continue;
-      }
+      // Detect end of blocks (closing braces at start of line) - already handled above
 
       // Detect loops
-      const loopMatch = line.match(/^(for|while)\s*\((.*?)\)/);
+      const loopMatch = line.match(/^(for|while)\s*\((.*?)\)\s*(\{?)/);
       if (loopMatch) {
-        sequence.push({ type: 'loop', condition: `${loopMatch[1]} ${loopMatch[2].substring(0, 40)}` });
+        const loopType = loopMatch[1];
+        const condition = loopMatch[2].substring(0, 40);
+        const hasOpenBrace = loopMatch[3] === '{';
+        
+        // Only track as a block if it has braces
+        if (hasOpenBrace || line.includes('{')) {
+          sequence.push({ type: 'loop', condition: `${loopType} ${condition}` });
+          openBlocks.push('loop');
+        }
         continue;
       }
 
-      // Detect forEach/map/filter
+      // Detect forEach/map/filter - these always create implicit blocks
       const arrayMethodMatch = line.match(/\.(forEach|map|filter|reduce)\s*\(/);
       if (arrayMethodMatch) {
-        sequence.push({ type: 'loop', condition: `${arrayMethodMatch[1]} iteration` });
+        // Only add loop if the callback has content (not just single expression)
+        // For now, just add a note instead of a block
+        sequence.push({ type: 'note', text: `${arrayMethodMatch[1]} operation` });
         continue;
       }
 
@@ -464,6 +558,12 @@ export class CodeParser {
           sequence.push({ type: 'call', object, method, returnType: 'returned' });
         }
       }
+    }
+
+    // Close any remaining open blocks
+    while (openBlocks.length > 0) {
+      sequence.push({ type: 'end' });
+      openBlocks.pop();
     }
 
     console.log('Analysis complete - Detected calls:', detectedCalls);

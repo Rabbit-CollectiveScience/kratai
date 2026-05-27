@@ -9,12 +9,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Method and className required' }, { status: 400 });
     }
 
+    console.log('[API /sequence] Generating for:', className, '->', method.name);
+    console.log('[API /sequence] Method body length:', (method.body || '').length);
+
     // Generate sequence diagram
     const sequenceDiagram = codeParser.generateSequenceDiagram(method, className);
 
+    console.log('[API /sequence] Generated diagram:');
+    console.log(sequenceDiagram);
+    console.log('[API /sequence] End of diagram');
+
     return NextResponse.json({ sequenceDiagram });
   } catch (error) {
-    console.error('Sequence generation error:', error);
+    console.error('[API /sequence] Sequence generation error:', error);
     return NextResponse.json(
       { error: 'Failed to generate sequence diagram', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
