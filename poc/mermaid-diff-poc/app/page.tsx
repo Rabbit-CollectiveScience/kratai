@@ -5,6 +5,8 @@ import MermaidDiagram from '@/components/MermaidDiagram';
 import GitHubAuth from '@/components/GitHubAuth';
 import RepoSelector from '@/components/RepoSelector';
 import FileBrowser from '@/components/FileBrowser';
+import SequenceModal from '@/components/SequenceModal';
+import TopNav from '@/components/TopNav';
 import { getGitHubService, GitHubRepo } from '@/lib/github';
 
 // Types for parsed code (matching codeParser types)
@@ -41,11 +43,21 @@ export default function Home() {
   const [sequenceDiagram, setSequenceDiagram] = useState<string>('');
   const [loadingSequence, setLoadingSequence] = useState(false);
 
-  // Check if already authenticated on mount
+  // Check if already authenticated on mount and load selected repo
   useEffect(() => {
     const github = getGitHubService();
     if (github.isAuthenticated()) {
       setIsAuthenticated(true);
+    }
+    
+    // Load selected repo from localStorage
+    const repoData = localStorage.getItem('selected_repo');
+    if (repoData) {
+      try {
+        setSelectedRepo(JSON.parse(repoData));
+      } catch (error) {
+        console.error('Failed to load repo from localStorage:', error);
+      }
     }
   }, []);
 
@@ -103,11 +115,15 @@ export default function Home() {
     setIsAuthenticated(false);
     setSelectedRepo(null);
     setSelectedFile(null);
+    // Clear localStorage
+    localStorage.removeItem('selected_repo');
   };
 
   const handleSelectRepo = (repo: GitHubRepo) => {
     setSelectedRepo(repo);
     setSelectedFile(null);
+    // Save to localStorage for persistence across pages
+    localStorage.setItem('selected_repo', JSON.stringify(repo));
   };
 
   const handleSelectFile = (path: string, content: string) => {
@@ -116,6 +132,9 @@ export default function Home() {
 
   const handleBackToRepos = () => {
     setSelectedRepo(null);
+    setSelectedFile(null);
+    // Remove from localStorage
+    localStorage.removeItem('selected_repo');
     setSelectedFile(null);
   };
 
@@ -226,6 +245,13 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      {/* Top Navigation */}
+      <TopNav 
+        isAuthenticated={isAuthenticated}
+        selectedRepo={selectedRepo}
+        onLogout={handleLogout}
+      />
+
       {/* Show authentication if not authenticated */}
       {!isAuthenticated && (
         <GitHubAuth onAuthenticated={handleAuthenticated} />
@@ -259,17 +285,6 @@ export default function Home() {
             <p className="text-slate-600 dark:text-slate-300">
               {selectedFile ? `Viewing: ${selectedFile.path}` : 'Select a file to visualize'}
             </p>
-            <div className="mt-2">
-              <a
-                href="/c4"
-                className="inline-flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                </svg>
-                View C4 Architecture Overview
-              </a>
-            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1900px] mx-auto">

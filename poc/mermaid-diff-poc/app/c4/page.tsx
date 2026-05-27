@@ -1,10 +1,35 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import MermaidDiagram from '@/components/MermaidDiagram';
+import TopNav from '@/components/TopNav';
+import { getGitHubService, GitHubRepo } from '@/lib/github';
 
 export default function C4OverviewPage() {
   const [currentLevel, setCurrentLevel] = useState<'context' | 'container' | 'component'>('context');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null);
+
+  useEffect(() => {
+    // Check authentication and load repo from localStorage
+    const token = localStorage.getItem('github_token');
+    const repoData = localStorage.getItem('selected_repo');
+    
+    if (token) {
+      setIsAuthenticated(true);
+      getGitHubService().setToken(token);
+    }
+    
+    if (repoData) {
+      setSelectedRepo(JSON.parse(repoData));
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('github_token');
+    localStorage.removeItem('selected_repo');
+    window.location.href = '/';
+  };
 
   // Sample C4 diagrams for different levels
   const c4Context = `C4Context
@@ -65,6 +90,13 @@ export default function C4OverviewPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      {/* Top Navigation */}
+      <TopNav 
+        isAuthenticated={isAuthenticated}
+        selectedRepo={selectedRepo}
+        onLogout={handleLogout}
+      />
+
       <main className="container mx-auto px-4 py-8">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
@@ -138,19 +170,6 @@ export default function C4OverviewPage() {
                 Navigate from system overview down to individual classes and functions.
               </p>
             </div>
-          </div>
-
-          {/* Back to main view */}
-          <div className="mt-6 text-center">
-            <a
-              href="/"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Back to Code Visualization
-            </a>
           </div>
         </div>
       </main>
