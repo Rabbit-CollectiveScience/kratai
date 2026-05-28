@@ -217,8 +217,8 @@ export const classDiagram: Diagram = {
 
 // Layers Overview Diagram
 export const layersOverviewDiagram: DiagramData = {
-  title: 'Architecture Layers Overview',
-  description: 'High-level view of the 4-layer architecture with change summary',
+  title: 'Package Diagram - 4-Layer Architecture',
+  description: 'High-level view of architectural packages and their dependencies',
   mermaidCode: `flowchart TB
     layer1[Layer 1: UI<br/>4 Components<br/>1 modified, 1 added]
     layer2[Layer 2: Controllers<br/>8 Use Cases<br/>1 modified, 1 added]

@@ -111,7 +111,7 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
                 : 'text-slate-400 hover:text-white hover:bg-slate-700/30'
             }`}
           >
-            Layers
+            Package
           </button>
           <button
             onClick={() => setActiveTab('class')}
@@ -145,7 +145,7 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
             </div>
           </div>
           <div className="text-xs text-slate-500">
-            {changesSummary.added + changesSummary.modified + changesSummary.deleted} {activeTab === 'deployment' ? 'components' : activeTab === 'layers' ? 'layers' : activeTab === 'class' ? 'classes' : 'use cases'} affected
+            {changesSummary.added + changesSummary.modified + changesSummary.deleted} {activeTab === 'deployment' ? 'components' : activeTab === 'layers' ? 'packages' : activeTab === 'class' ? 'classes' : 'use cases'} affected
           </div>
         </div>
       )}
