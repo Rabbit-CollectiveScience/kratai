@@ -283,7 +283,10 @@ export default function StaticView({ selectedFile, syncEnabled, onFileSelect }: 
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  minHeight: '400px'
+                  minHeight: '400px',
+                  background: 'white',
+                  borderRadius: '8px',
+                  padding: '20px'
                 }}
               />
             </div>
@@ -336,11 +339,14 @@ export default function StaticView({ selectedFile, syncEnabled, onFileSelect }: 
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  minHeight: '400px'
+                  minHeight: '400px',
+                  background: 'white',
+                  borderRadius: '8px',
+                  padding: '20px'
                 }}
               />
               
-              {/* Force text visibility for all diagrams */}
+              {/* Force text and line visibility for all diagrams */}
               <style jsx global>{`
                 .main-diagram text,
                 .single-class-diagram text {
@@ -351,6 +357,22 @@ export default function StaticView({ selectedFile, syncEnabled, onFileSelect }: 
                 .single-class-diagram .classTitle {
                   fill: #000 !important;
                   font-weight: bold !important;
+                }
+                .main-diagram path,
+                .single-class-diagram path,
+                .main-diagram line,
+                .single-class-diagram line {
+                  stroke: #333 !important;
+                  stroke-width: 2px !important;
+                }
+                .main-diagram .arrowheadPath,
+                .single-class-diagram .arrowheadPath {
+                  fill: #333 !important;
+                }
+                .main-diagram marker path,
+                .single-class-diagram marker path {
+                  fill: #333 !important;
+                  stroke: #333 !important;
                 }
               `}</style>
             </div>

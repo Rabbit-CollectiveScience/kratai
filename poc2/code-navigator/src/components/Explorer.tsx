@@ -32,7 +32,12 @@ export default function Explorer({ syncEnabled, onSyncToggle, selectedFile, onFi
     const indent = depth * 12;
 
     // Hide test files
-    if (node.type === 'file' && node.name.endsWith('.test.ts')) {
+    if (node.type === 'file' && (
+      node.name.endsWith('.test.ts') || 
+      node.name.endsWith('.test.tsx') || 
+      node.name.endsWith('.spec.ts') || 
+      node.name.endsWith('.spec.tsx')
+    )) {
       return null;
     }
 
@@ -77,7 +82,14 @@ export default function Explorer({ syncEnabled, onSyncToggle, selectedFile, onFi
             </svg>
             <span className="text-sm">{node.name}</span>
             {node.children && (
-              <span className="text-xs text-slate-500">({node.children.length})</span>
+              <span className="text-xs text-slate-500">
+                ({node.children.filter(child => {
+                  if (child.type === 'file') {
+                    return !(child.name.endsWith('.test.ts') || child.name.endsWith('.test.tsx') || child.name.endsWith('.spec.ts') || child.name.endsWith('.spec.tsx'));
+                  }
+                  return true;
+                }).length})
+              </span>
             )}
           </div>
           {isExpanded && node.children && (
