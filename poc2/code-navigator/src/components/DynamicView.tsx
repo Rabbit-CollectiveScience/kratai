@@ -67,45 +67,24 @@ export default function DynamicView({ selectedMethod, onMethodSelect }: DynamicV
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="px-4 py-3 bg-slate-800/30 border-b border-slate-700">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <label className="text-xs text-slate-400 mb-1 block">Select Method</label>
-            <select
-              value={selectedMethod || ''}
-              onChange={(e) => onMethodSelect(e.target.value || null)}
-              className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50"
-            >
-              <option value="">No method selected</option>
-              {Object.keys(sequenceDiagrams).map((key) => (
-                <option key={key} value={key}>
-                  {key}()
-                </option>
-              ))}
-            </select>
-          </div>
-          {selectedMethod && (
-            <button
-              onClick={() => onMethodSelect(null)}
-              className="ml-3 p-2 hover:bg-slate-700/50 rounded text-slate-400 hover:text-white transition-colors"
-              title="Clear selection"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* Main Diagram Area */}
       <div className="flex-1 overflow-auto">
         {currentDiagram ? (
           <div className="w-full h-full p-6">
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold text-white mb-1">{currentDiagram.title}</h3>
-              <p className="text-sm text-slate-400">{currentDiagram.description}</p>
+            <div className="mb-4 flex items-start justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-1">{currentDiagram.title}</h3>
+                <p className="text-sm text-slate-400">{currentDiagram.description}</p>
+              </div>
+              <button
+                onClick={() => onMethodSelect(null)}
+                className="ml-3 p-2 hover:bg-slate-700/50 rounded text-slate-400 hover:text-white transition-colors"
+                title="Clear selection"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
 
             <div className="relative bg-slate-800/30 rounded-lg p-8">
