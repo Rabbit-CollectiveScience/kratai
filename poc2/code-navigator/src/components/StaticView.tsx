@@ -67,6 +67,28 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
     }
   }, [activeTab]);
 
+  // Handle diagram click for drill-down navigation
+  useEffect(() => {
+    const handleDiagramClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const mermaidDiv = target.closest('.mermaid');
+      
+      if (mermaidDiv) {
+        // Deployment → Package
+        if (activeTab === 'deployment') {
+          setActiveTab('layers');
+        }
+        // Package → Class
+        else if (activeTab === 'layers') {
+          setActiveTab('class');
+        }
+      }
+    };
+
+    document.addEventListener('click', handleDiagramClick);
+    return () => document.removeEventListener('click', handleDiagramClick);
+  }, [activeTab]);
+
   const diagram = activeTab === 'deployment' ? deploymentDiagram : activeTab === 'layers' ? layersOverviewDiagram : activeTab === 'class' ? classDiagram : useCaseDiagram;
   const { changesSummary } = diagram;
 
@@ -173,7 +195,8 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
               {/* Mermaid Diagram */}
               <div 
                 key={diagramKey} 
-                className={`mermaid flex items-center justify-center ${!mermaidRendered ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
+                className={`mermaid flex items-center justify-center ${!mermaidRendered ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300 ${(activeTab === 'deployment' || activeTab === 'layers') ? 'cursor-pointer hover:opacity-90' : ''}`}
+                title={activeTab === 'deployment' ? 'Click to view Package diagram' : activeTab === 'layers' ? 'Click to view Class diagram' : ''}
               >
                 {diagram.mermaidCode}
               </div>
