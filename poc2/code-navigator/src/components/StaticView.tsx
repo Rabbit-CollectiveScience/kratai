@@ -175,16 +175,12 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
                 {activeTab === 'deployment' ? (
                   <>
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded bg-blue-500"></div>
-                      <span className="text-slate-300">Container (Unchanged)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded bg-yellow-500"></div>
-                      <span className="text-slate-300">Container (Modified)</span>
+                      <span className="text-slate-300">Modified Component</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded bg-purple-500"></div>
-                      <span className="text-slate-300">Database</span>
+                      <div className="w-4 h-4 rounded bg-blue-500"></div>
+                      <span className="text-slate-300">Unchanged Component</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded bg-slate-500"></div>

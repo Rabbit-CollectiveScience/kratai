@@ -67,35 +67,39 @@ export const deploymentDiagram: Diagram = {
     classDef platform fill:#3b82f6,stroke:#2563eb,stroke-width:4px,color:#fff,font-weight:bold
     classDef platformModified fill:#eab308,stroke:#ca8a04,stroke-width:4px,color:#000,font-weight:bold
     classDef database fill:#8b5cf6,stroke:#7c3aed,stroke-width:4px,color:#fff,font-weight:bold
+    classDef databaseModified fill:#eab308,stroke:#ca8a04,stroke-width:4px,color:#000,font-weight:bold
     classDef external fill:#64748b,stroke:#475569,stroke-width:2px,color:#fff
     
-    class webapp platform
-    class agentrunner platformModified
-    class db database
+    class webapp platformModified
+    class agentrunner platform
+    class db databaseModified
     class github,gcp,openai,aider external`,
   elements: [
     {
       id: 'webapp',
       name: 'Web Application',
       type: 'container',
-      diff: { status: 'unchanged' },
+      diff: { 
+        status: 'modified',
+        description: 'Added analytics dashboard and enhanced project creation'
+      },
       path: 'aiboard/src',
     },
     {
       id: 'agentrunner',
       name: 'Agent Runner',
       type: 'container',
-      diff: { 
-        status: 'modified',
-        description: 'Enhanced with context file filtering'
-      },
+      diff: { status: 'unchanged' },
       path: 'aiboard/agent-runner',
     },
     {
       id: 'db',
       name: 'MongoDB Database',
       type: 'container',
-      diff: { status: 'unchanged' },
+      diff: { 
+        status: 'modified',
+        description: 'Added analytics collection'
+      },
     },
     {
       id: 'github',
@@ -124,9 +128,9 @@ export const deploymentDiagram: Diagram = {
   ],
   changesSummary: {
     added: 0,
-    modified: 1,
+    modified: 2,
     deleted: 0,
-    unchanged: 6,
+    unchanged: 5,
   },
 };
 
@@ -204,11 +208,9 @@ export const useCaseDiagram: Diagram = {
     classDef unchanged fill:#e5e7eb,stroke:#9ca3af,stroke-width:2px,color:#000
     classDef actor fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff
     
-    class uc4 added
-    class uc8 added
-    class uc2 modified
-    class uc13 modified
-    class uc1,uc3,uc5,uc6,uc7,uc9,uc10,uc11,uc12,uc14,uc15,uc16,uc17,uc18,uc19 unchanged
+    class uc19 added
+    class uc17 modified
+    class uc1,uc2,uc3,uc4,uc5,uc6,uc7,uc8,uc9,uc10,uc11,uc12,uc13,uc14,uc15,uc16,uc18 unchanged
     class dev,agent,lead actor`,
   elements: [
     // Actors
@@ -243,10 +245,7 @@ export const useCaseDiagram: Diagram = {
       id: 'uc2',
       name: 'Update Task',
       type: 'usecase',
-      diff: { 
-        status: 'modified',
-        description: 'Added validation for context files'
-      },
+      diff: { status: 'unchanged' },
       path: 'aiboard/src/l2_controllers/task/UpdateTaskUseCase.ts',
     },
     {
@@ -260,10 +259,7 @@ export const useCaseDiagram: Diagram = {
       id: 'uc4',
       name: 'Set Task Context Files',
       type: 'usecase',
-      diff: { 
-        status: 'added',
-        description: 'NEW: AI agent added file context selection feature'
-      },
+      diff: { status: 'unchanged' },
       path: 'aiboard/src/l2_controllers/task/SetTaskContextFilesUseCase.ts',
     },
     {
@@ -293,10 +289,7 @@ export const useCaseDiagram: Diagram = {
       id: 'uc8',
       name: 'Configure Agent Context',
       type: 'usecase',
-      diff: { 
-        status: 'added',
-        description: 'NEW: Set which files the agent should focus on'
-      },
+      diff: { status: 'unchanged' },
       path: 'aiboard/src/l2_controllers/agent/SetAgentContextFilesUseCase.ts',
     },
     {
@@ -335,10 +328,7 @@ export const useCaseDiagram: Diagram = {
       id: 'uc13',
       name: 'Review AI Changes',
       type: 'usecase',
-      diff: { 
-        status: 'modified',
-        description: 'Enhanced with context file highlighting'
-      },
+      diff: { status: 'unchanged' },
       path: 'aiboard/src/l2_controllers/review/ApproveSessionUseCase.ts',
     },
     {
@@ -368,7 +358,10 @@ export const useCaseDiagram: Diagram = {
       id: 'uc17',
       name: 'Create Project',
       type: 'usecase',
-      diff: { status: 'unchanged' },
+      diff: { 
+        status: 'modified',
+        description: 'Enhanced project creation workflow'
+      },
       path: 'aiboard/src/l2_controllers/project/CreateProjectUseCase.ts',
     },
     {
@@ -382,15 +375,18 @@ export const useCaseDiagram: Diagram = {
       id: 'uc19',
       name: 'View Analytics',
       type: 'usecase',
-      diff: { status: 'unchanged' },
-      path: 'aiboard/src/l2_controllers/session/GetAiFleetStatusUseCase.ts',
+      diff: { 
+        status: 'added',
+        description: 'NEW: Analytics dashboard for project insights'
+      },
+      path: 'aiboard/src/l2_controllers/analytics/ViewAnalyticsUseCase.ts',
     },
   ],
   changesSummary: {
-    added: 2,
-    modified: 2,
+    added: 1,
+    modified: 1,
     deleted: 0,
-    unchanged: 15,
+    unchanged: 17,
   },
 };
 
