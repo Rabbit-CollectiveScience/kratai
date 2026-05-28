@@ -173,7 +173,10 @@ export default function StaticView({ selectedFile, syncEnabled, onFileSelect }: 
         {/* Tabs */}
         <div className="flex items-center gap-1">
           <button
-            onClick={() => setActiveTab('usecase')}
+            onClick={() => {
+              setActiveTab('usecase');
+              onFileSelect?.(null);
+            }}
             className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
               activeTab === 'usecase'
                 ? 'bg-slate-700/50 text-white'
@@ -183,7 +186,10 @@ export default function StaticView({ selectedFile, syncEnabled, onFileSelect }: 
             Use Cases
           </button>
           <button
-            onClick={() => setActiveTab('deployment')}
+            onClick={() => {
+              setActiveTab('deployment');
+              onFileSelect?.(null);
+            }}
             className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
               activeTab === 'deployment'
                 ? 'bg-slate-700/50 text-white'
@@ -193,7 +199,10 @@ export default function StaticView({ selectedFile, syncEnabled, onFileSelect }: 
             Deployment
           </button>
           <button
-            onClick={() => setActiveTab('layers')}
+            onClick={() => {
+              setActiveTab('layers');
+              onFileSelect?.(null);
+            }}
             className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
               activeTab === 'layers'
                 ? 'bg-slate-700/50 text-white'
@@ -203,7 +212,10 @@ export default function StaticView({ selectedFile, syncEnabled, onFileSelect }: 
             Package
           </button>
           <button
-            onClick={() => setActiveTab('class')}
+            onClick={() => {
+              setActiveTab('class');
+              onFileSelect?.(null);
+            }}
             className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
               activeTab === 'class'
                 ? 'bg-slate-700/50 text-white'
