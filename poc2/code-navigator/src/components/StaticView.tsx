@@ -148,9 +148,27 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
               <h3 className="text-lg font-semibold text-white mb-1">{diagram.title}</h3>
               <p className="text-sm text-slate-400">{diagram.description}</p>
             </div>
-            <div key={diagramKey} className="mermaid bg-slate-800/30 rounded-lg p-8 flex items-center justify-center min-h-[calc(100vh-300px)]">
-              {diagram.mermaidCode}
+            
+            <div className="relative bg-slate-800/30 rounded-lg p-8 min-h-[calc(100vh-300px)]">
+              {/* Loading Overlay */}
+              {!mermaidRendered && (
+                <div className="absolute inset-0 bg-slate-800/30 rounded-lg flex items-center justify-center z-10">
+                  <div className="text-center">
+                    <div className="w-12 h-12 border-4 border-slate-600 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-slate-400 text-sm">Rendering diagram...</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Mermaid Diagram */}
+              <div 
+                key={diagramKey} 
+                className={`mermaid flex items-center justify-center ${!mermaidRendered ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
+              >
+                {diagram.mermaidCode}
+              </div>
             </div>
+            
             <div className="mt-6 p-4 bg-slate-800/30 rounded-lg">
               <h4 className="text-sm font-semibold text-white mb-3">Legend</h4>
               <div className="grid grid-cols-2 gap-3 text-xs">
