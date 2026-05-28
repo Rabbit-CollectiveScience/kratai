@@ -1,11 +1,64 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import { useCaseDiagram } from '@/data/diagrams';
+
 interface StaticViewProps {
   selectedFile: string | null;
   syncEnabled: boolean;
 }
 
 export default function StaticView({ selectedFile, syncEnabled }: StaticViewProps) {
+  const [activeTab, setActiveTab] = useState<'usecase' | 'c4' | 'class'>('usecase');
+  const [mermaidRendered, setMermaidRendered] = useState(false);
+
+  useEffect(() => {
+    // Dynamically load and render Mermaid (client-side only)
+    const renderMermaid = async () => {
+      if (typeof window === 'undefined') return;
+      
+      try {
+        const mermaidModule = await import('mermaid');
+        const mermaid = mermaidModule.default;
+        
+        mermaid.initialize({
+          startOnLoad: true,
+          theme: 'dark',
+          themeVariables: {
+            primaryColor: '#1e293b',
+            primaryTextColor: '#e2e8f0',
+            primaryBorderColor: '#475569',
+            lineColor: '#64748b',
+            secondaryColor: '#334155',
+            tertiaryColor: '#0f172a',
+            background: '#0f172a',
+            mainBkg: '#1e293b',
+            textColor: '#e2e8f0',
+          },
+        });
+        
+        // Find all mermaid elements and render them
+        const elements = document.querySelectorAll('.mermaid');
+        if (elements.length > 0) {
+          await mermaid.run({
+            querySelector: '.mermaid',
+          });
+          setMermaidRendered(true);
+        }
+      } catch (error) {
+        console.error('Mermaid rendering error:', error);
+      }
+    };
+
+    if (activeTab === 'usecase') {
+      setMermaidRendered(false);
+      setTimeout(renderMermaid, 100);
+    }
+  }, [activeTab]);
+
+  const diagram = useCaseDiagram;
+  const { changesSummary } = diagram;
+
   return (
     <div className="flex-1 bg-slate-900 border-r border-slate-700 flex flex-col">
       {/* Header with Tabs */}
@@ -19,31 +72,115 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
 
         {/* Tabs */}
         <div className="flex items-center gap-1">
-          <button className="px-3 py-1.5 bg-slate-700/50 text-white text-sm rounded-lg">
+          <button
+            onClick={() => setActiveTab('usecase')}
+            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+              activeTab === 'usecase'
+                ? 'bg-slate-700/50 text-white'
+                : 'text-slate-400 hover:text-white hover:bg-slate-700/30'
+            }`}
+          >
+            Use Cases
+          </button>
+          <button
+            onClick={() => setActiveTab('c4')}
+            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+              activeTab === 'c4'
+                ? 'bg-slate-700/50 text-white'
+                : 'text-slate-400 hover:text-white hover:bg-slate-700/30'
+            }`}
+          >
             C4
           </button>
-          <button className="px-3 py-1.5 text-slate-400 hover:text-white text-sm rounded-lg hover:bg-slate-700/30">
+          <button
+            onClick={() => setActiveTab('class')}
+            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+              activeTab === 'class'
+                ? 'bg-slate-700/50 text-white'
+                : 'text-slate-400 hover:text-white hover:bg-slate-700/30'
+            }`}
+          >
             Class
-          </button>
-          <button className="px-3 py-1.5 text-slate-400 hover:text-white text-sm rounded-lg hover:bg-slate-700/30">
-            Dependencies
           </button>
         </div>
       </div>
 
-      {/* Main Diagram Area */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="text-center">
-          <div className="w-24 h-24 mx-auto mb-6 bg-slate-800/50 rounded-2xl flex items-center justify-center border border-slate-700">
-            <svg className="w-12 h-12 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-            </svg>
+      {/* Change Summary Bar */}
+      {activeTab === 'usecase' && (
+        <div className="px-4 py-2 bg-slate-800/30 border-b border-slate-700 flex items-center justify-between">
+          <div className="flex items-center gap-4 text-xs">
+            <span className="text-slate-400">Changes:</span>
+            <div className="flex items-center gap-1">
+              <span className="text-green-500 font-semibold">+{changesSummary.added}</span>
+              <span className="text-slate-500">added</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-yellow-500 font-semibold">~{changesSummary.modified}</span>
+              <span className="text-slate-500">modified</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-slate-500">{changesSummary.unchanged}</span>
+              <span className="text-slate-500">unchanged</span>
+            </div>
           </div>
-          <h3 className="text-slate-300 font-medium mb-2">Architecture Diagram</h3>
-          <p className="text-slate-500 text-sm max-w-md">
-            C4 diagrams will appear here. Select an element in the explorer to navigate through different architectural levels.
-          </p>
+          <div className="text-xs text-slate-500">
+            {changesSummary.added + changesSummary.modified + changesSummary.deleted} use cases affected
+          </div>
         </div>
+      )}
+
+      {/* Main Diagram Area */}
+      <div className="flex-1 overflow-auto">
+        {activeTab === 'usecase' ? (
+          <div className="w-full h-full p-6">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-white mb-1">{diagram.title}</h3>
+              <p className="text-sm text-slate-400">{diagram.description}</p>
+            </div>
+            <div className="mermaid bg-slate-800/30 rounded-lg p-8 flex items-center justify-center min-h-[calc(100vh-300px)]">
+              {diagram.mermaidCode}
+            </div>
+            <div className="mt-6 p-4 bg-slate-800/30 rounded-lg">
+              <h4 className="text-sm font-semibold text-white mb-3">Legend</h4>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-green-500"></div>
+                  <span className="text-slate-300">Added (New functionality)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-yellow-500"></div>
+                  <span className="text-slate-300">Modified (Enhanced)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-slate-400"></div>
+                  <span className="text-slate-300">Unchanged (Existing)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-blue-500"></div>
+                  <span className="text-slate-300">Actor (User/System)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="w-24 h-24 mx-auto mb-6 bg-slate-800/50 rounded-2xl flex items-center justify-center border border-slate-700">
+                <svg className="w-12 h-12 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+              </div>
+              <h3 className="text-slate-300 font-medium mb-2">
+                {activeTab === 'c4' ? 'C4 Diagrams' : 'Class Diagrams'}
+              </h3>
+              <p className="text-slate-500 text-sm max-w-md">
+                {activeTab === 'c4'
+                  ? 'C4 Context, Container, and Component diagrams coming soon'
+                  : 'Class diagrams showing implementation details coming soon'}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom Toolbar */}
@@ -62,7 +199,7 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
             Reset
           </button>
         </div>
-        
+
         <div className="text-xs text-slate-500">
           {syncEnabled && <span className="text-green-500">● Synced</span>}
         </div>
