@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useCaseDiagram } from '@/data/diagrams';
+import { useCaseDiagram, containerDiagram } from '@/data/diagrams';
 
 interface StaticViewProps {
   selectedFile: string | null;
@@ -9,8 +9,9 @@ interface StaticViewProps {
 }
 
 export default function StaticView({ selectedFile, syncEnabled }: StaticViewProps) {
-  const [activeTab, setActiveTab] = useState<'usecase' | 'c4' | 'class'>('usecase');
+  const [activeTab, setActiveTab] = useState<'usecase' | 'container' | 'class'>('usecase');
   const [mermaidRendered, setMermaidRendered] = useState(false);
+  const [diagramKey, setDiagramKey] = useState(0);
 
   useEffect(() => {
     // Dynamically load and render Mermaid (client-side only)
@@ -22,7 +23,7 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
         const mermaid = mermaidModule.default;
         
         mermaid.initialize({
-          startOnLoad: true,
+          startOnLoad: false,
           theme: 'dark',
           themeVariables: {
             primaryColor: '#1e293b',
@@ -37,6 +38,15 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
           },
         });
         
+        // Remove any existing SVG to force clean render
+        const mermaidDiv = document.querySelector('.mermaid');
+        if (mermaidDiv) {
+          const existingSvg = mermaidDiv.querySelector('svg');
+          if (existingSvg) {
+            existingSvg.remove();
+          }
+        }
+        
         // Find all mermaid elements and render them
         const elements = document.querySelectorAll('.mermaid');
         if (elements.length > 0) {
@@ -50,13 +60,14 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
       }
     };
 
-    if (activeTab === 'usecase') {
+    if (activeTab === 'usecase' || activeTab === 'container') {
       setMermaidRendered(false);
-      setTimeout(renderMermaid, 100);
+      setDiagramKey(prev => prev + 1); // Force remount
+      setTimeout(renderMermaid, 150);
     }
   }, [activeTab]);
 
-  const diagram = useCaseDiagram;
+  const diagram = activeTab === 'container' ? containerDiagram : useCaseDiagram;
   const { changesSummary } = diagram;
 
   return (
@@ -83,14 +94,14 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
             Use Cases
           </button>
           <button
-            onClick={() => setActiveTab('c4')}
+            onClick={() => setActiveTab('container')}
             className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-              activeTab === 'c4'
+              activeTab === 'container'
                 ? 'bg-slate-700/50 text-white'
                 : 'text-slate-400 hover:text-white hover:bg-slate-700/30'
             }`}
           >
-            C4
+            Container
           </button>
           <button
             onClick={() => setActiveTab('class')}
@@ -106,7 +117,7 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
       </div>
 
       {/* Change Summary Bar */}
-      {activeTab === 'usecase' && (
+      {(activeTab === 'usecase' || activeTab === 'container') && (
         <div className="px-4 py-2 bg-slate-800/30 border-b border-slate-700 flex items-center justify-between">
           <div className="flex items-center gap-4 text-xs">
             <span className="text-slate-400">Changes:</span>
@@ -124,41 +135,64 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
             </div>
           </div>
           <div className="text-xs text-slate-500">
-            {changesSummary.added + changesSummary.modified + changesSummary.deleted} use cases affected
+            {changesSummary.added + changesSummary.modified + changesSummary.deleted} {activeTab === 'container' ? 'containers' : 'use cases'} affected
           </div>
         </div>
       )}
 
       {/* Main Diagram Area */}
       <div className="flex-1 overflow-auto">
-        {activeTab === 'usecase' ? (
+        {activeTab === 'usecase' || activeTab === 'container' ? (
           <div className="w-full h-full p-6">
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-white mb-1">{diagram.title}</h3>
               <p className="text-sm text-slate-400">{diagram.description}</p>
             </div>
-            <div className="mermaid bg-slate-800/30 rounded-lg p-8 flex items-center justify-center min-h-[calc(100vh-300px)]">
+            <div key={diagramKey} className="mermaid bg-slate-800/30 rounded-lg p-8 flex items-center justify-center min-h-[calc(100vh-300px)]">
               {diagram.mermaidCode}
             </div>
             <div className="mt-6 p-4 bg-slate-800/30 rounded-lg">
               <h4 className="text-sm font-semibold text-white mb-3">Legend</h4>
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded bg-green-500"></div>
-                  <span className="text-slate-300">Added (New functionality)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded bg-yellow-500"></div>
-                  <span className="text-slate-300">Modified (Enhanced)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded bg-slate-400"></div>
-                  <span className="text-slate-300">Unchanged (Existing)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded bg-blue-500"></div>
-                  <span className="text-slate-300">Actor (User/System)</span>
-                </div>
+                {activeTab === 'container' ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded bg-blue-500"></div>
+                      <span className="text-slate-300">Container (Unchanged)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded bg-yellow-500"></div>
+                      <span className="text-slate-300">Container (Modified)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded bg-purple-500"></div>
+                      <span className="text-slate-300">Database</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded bg-slate-500"></div>
+                      <span className="text-slate-300">External Service</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded bg-green-500"></div>
+                      <span className="text-slate-300">Added (New functionality)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded bg-yellow-500"></div>
+                      <span className="text-slate-300">Modified (Enhanced)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded bg-slate-400"></div>
+                      <span className="text-slate-300">Unchanged (Existing)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded bg-blue-500"></div>
+                      <span className="text-slate-300">Actor (User/System)</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -170,13 +204,9 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                 </svg>
               </div>
-              <h3 className="text-slate-300 font-medium mb-2">
-                {activeTab === 'c4' ? 'C4 Diagrams' : 'Class Diagrams'}
-              </h3>
+              <h3 className="text-slate-300 font-medium mb-2">Class Diagrams</h3>
               <p className="text-slate-500 text-sm max-w-md">
-                {activeTab === 'c4'
-                  ? 'C4 Context, Container, and Component diagrams coming soon'
-                  : 'Class diagrams showing implementation details coming soon'}
+                Class diagrams showing implementation details coming soon
               </p>
             </div>
           </div>

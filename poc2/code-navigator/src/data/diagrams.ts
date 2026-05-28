@@ -29,6 +29,108 @@ export interface Diagram {
 }
 
 // ============================================================================
+// Level 2: Container Diagram (C4-inspired)
+// ============================================================================
+
+export const containerDiagram: Diagram = {
+  id: 'level2-container',
+  level: 'container',
+  title: 'Container Diagram - aiboard Architecture',
+  description: 'Shows deployable applications, databases, and external services',
+  mermaidCode: `graph TB
+    subgraph aiboard[aiboard Platform]
+        direction LR
+        webapp[Web Application<br/>Next.js, Port 3000<br/>4-layer architecture]
+        agentrunner[Agent Runner<br/>Node.js Script<br/>Cloud Run Deployment]
+    end
+    
+    db[(MongoDB<br/>Database)]
+    
+    subgraph external[External Services]
+        direction TB
+        github[GitHub<br/>Repository & OAuth]
+        gcp[Cloud Run<br/>Job Platform]
+        openai[OpenAI API<br/>LLM Service]
+        aider[Aider<br/>AI Programming]
+    end
+    
+    webapp <-->|Read/Write| db
+    webapp -->|OAuth & PR| github
+    webapp -->|Dispatch| gcp
+    
+    gcp -->|Execute| agentrunner
+    agentrunner -->|Progress| db
+    agentrunner -->|LLM| openai
+    agentrunner -->|Edit| aider
+    agentrunner -->|Commit| github
+    
+    classDef container fill:#3b82f6,stroke:#2563eb,stroke-width:3px,color:#fff
+    classDef containerModified fill:#eab308,stroke:#ca8a04,stroke-width:3px,color:#000
+    classDef database fill:#8b5cf6,stroke:#7c3aed,stroke-width:3px,color:#fff
+    classDef external fill:#64748b,stroke:#475569,stroke-width:2px,color:#fff
+    
+    class webapp container
+    class agentrunner containerModified
+    class db database
+    class github,gcp,openai,aider external`,
+  elements: [
+    {
+      id: 'webapp',
+      name: 'Web Application',
+      type: 'container',
+      diff: { status: 'unchanged' },
+      path: 'aiboard/src',
+    },
+    {
+      id: 'agentrunner',
+      name: 'Agent Runner',
+      type: 'container',
+      diff: { 
+        status: 'modified',
+        description: 'Enhanced with context file filtering'
+      },
+      path: 'aiboard/agent-runner',
+    },
+    {
+      id: 'db',
+      name: 'MongoDB Database',
+      type: 'container',
+      diff: { status: 'unchanged' },
+    },
+    {
+      id: 'github',
+      name: 'GitHub',
+      type: 'system',
+      diff: { status: 'unchanged' },
+    },
+    {
+      id: 'gcp',
+      name: 'Cloud Run',
+      type: 'system',
+      diff: { status: 'unchanged' },
+    },
+    {
+      id: 'openai',
+      name: 'OpenAI API',
+      type: 'system',
+      diff: { status: 'unchanged' },
+    },
+    {
+      id: 'aider',
+      name: 'Aider',
+      type: 'system',
+      diff: { status: 'unchanged' },
+    },
+  ],
+  changesSummary: {
+    added: 0,
+    modified: 1,
+    deleted: 0,
+    unchanged: 6,
+  },
+};
+
+// ============================================================================
 // Level 1: Use Case Diagram
 // ============================================================================
 
@@ -295,4 +397,5 @@ export const useCaseDiagram: Diagram = {
 // Export all diagrams
 export const allDiagrams = {
   usecase: useCaseDiagram,
+  container: containerDiagram,
 };
