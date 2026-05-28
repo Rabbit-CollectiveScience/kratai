@@ -31,6 +31,11 @@ export default function Explorer({ syncEnabled, onSyncToggle, selectedFile, onFi
     const isSelected = selectedFile === node.path;
     const indent = depth * 12;
 
+    // Hide test files
+    if (node.type === 'file' && node.name.endsWith('.test.ts')) {
+      return null;
+    }
+
     // Filter by search query (simple name matching)
     if (searchQuery && !node.name.toLowerCase().includes(searchQuery.toLowerCase())) {
       // Still show parent folders if children match

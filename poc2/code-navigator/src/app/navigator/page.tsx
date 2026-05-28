@@ -34,6 +34,7 @@ export default function NavigatorPage() {
         <StaticView 
           selectedFile={selectedFile}
           syncEnabled={syncEnabled}
+          onFileSelect={setSelectedFile}
         />
 
         {/* Right Panel: Behavioral View */}

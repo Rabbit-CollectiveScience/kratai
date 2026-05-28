@@ -6,12 +6,99 @@ import { useCaseDiagram, deploymentDiagram, layersOverviewDiagram, classDiagram 
 interface StaticViewProps {
   selectedFile: string | null;
   syncEnabled: boolean;
+  onFileSelect?: (file: string | null) => void;
 }
 
-export default function StaticView({ selectedFile, syncEnabled }: StaticViewProps) {
+// Map files to their classes for single-class diagrams
+const fileToClassMap: Record<string, { className: string, layer: string, diff: string }> = {
+  // Layer 1 - UI Components
+  'aiboard/src/l1_ui/pages/ProjectDashboard.tsx': { className: 'ProjectDashboard', layer: 'Layer1_UI', diff: 'modified' },
+  'aiboard/src/l1_ui/pages/AnalyticsDashboard.tsx': { className: 'AnalyticsDashboard', layer: 'Layer1_UI', diff: 'added' },
+  'aiboard/src/l1_ui/pages/ProjectBoard.tsx': { className: 'ProjectBoard', layer: 'Layer1_UI', diff: 'unchanged' },
+  'aiboard/src/l1_ui/pages/AgentManagement.tsx': { className: 'AgentManagement', layer: 'Layer1_UI', diff: 'unchanged' },
+  
+  // Layer 2 - Controllers/Use Cases
+  'aiboard/src/l2_controllers/project/CreateProjectUseCase.ts': { className: 'CreateProjectUseCase', layer: 'Layer2_Controllers', diff: 'modified' },
+  'aiboard/src/l2_controllers/project/GetProjectUseCase.ts': { className: 'GetProjectUseCase', layer: 'Layer2_Controllers', diff: 'unchanged' },
+  'aiboard/src/l2_controllers/task/CreateTaskUseCase.ts': { className: 'CreateTaskUseCase', layer: 'Layer2_Controllers', diff: 'unchanged' },
+  'aiboard/src/l2_controllers/task/MoveTaskUseCase.ts': { className: 'MoveTaskUseCase', layer: 'Layer2_Controllers', diff: 'unchanged' },
+  'aiboard/src/l2_controllers/project/AddColumnUseCase.ts': { className: 'AddColumnUseCase', layer: 'Layer2_Controllers', diff: 'unchanged' },
+  'aiboard/src/l2_controllers/agent/CreateAgentUseCase.ts': { className: 'CreateAgentUseCase', layer: 'Layer2_Controllers', diff: 'unchanged' },
+  'aiboard/src/l2_controllers/agent/DeleteAgentUseCase.ts': { className: 'DeleteAgentUseCase', layer: 'Layer2_Controllers', diff: 'unchanged' },
+  'aiboard/src/l2_controllers/agent/ListAgentsUseCase.ts': { className: 'ListAgentsUseCase', layer: 'Layer2_Controllers', diff: 'unchanged' },
+  'aiboard/src/l2_controllers/agent/SetAgentContextFilesUseCase.ts': { className: 'SetAgentContextFilesUseCase', layer: 'Layer2_Controllers', diff: 'unchanged' },
+  'aiboard/src/l2_controllers/agent/UpdateAgentUseCase.ts': { className: 'UpdateAgentUseCase', layer: 'Layer2_Controllers', diff: 'unchanged' },
+  'aiboard/src/l2_controllers/agent/UploadAgentAvatarUseCase.ts': { className: 'UploadAgentAvatarUseCase', layer: 'Layer2_Controllers', diff: 'unchanged' },
+  'aiboard/src/l2_controllers/analytics/ViewAnalyticsUseCase.ts': { className: 'ViewAnalyticsUseCase', layer: 'Layer2_Controllers', diff: 'added' },
+  
+  // Layer 3 - Domain Models
+  'aiboard/src/l3_model/ProjectModel.ts': { className: 'ProjectModel', layer: 'Layer3_Domain', diff: 'modified' },
+  'aiboard/src/l3_model/TaskModel.ts': { className: 'TaskModel', layer: 'Layer3_Domain', diff: 'unchanged' },
+  'aiboard/src/l3_model/AgentModel.ts': { className: 'AgentModel', layer: 'Layer3_Domain', diff: 'unchanged' },
+  'aiboard/src/l3_model/SessionModel.ts': { className: 'SessionModel', layer: 'Layer3_Domain', diff: 'unchanged' },
+  'aiboard/src/l3_model/IProjectRepository.ts': { className: 'IProjectRepository', layer: 'Layer3_Domain', diff: 'unchanged' },
+  'aiboard/src/l3_model/ITaskRepository.ts': { className: 'ITaskRepository', layer: 'Layer3_Domain', diff: 'unchanged' },
+  'aiboard/src/l3_model/IAgentRepository.ts': { className: 'IAgentRepository', layer: 'Layer3_Domain', diff: 'unchanged' },
+  'aiboard/src/l3_model/ISessionRepository.ts': { className: 'ISessionRepository', layer: 'Layer3_Domain', diff: 'unchanged' },
+  
+  // Layer 4 - Infrastructure
+  'aiboard/src/l4_infra/strategies/mongodb/MongoProjectRepository.ts': { className: 'MongoProjectRepository', layer: 'Layer4_Infrastructure', diff: 'modified' },
+  'aiboard/src/l4_infra/strategies/mongodb/MongoTaskRepository.ts': { className: 'MongoTaskRepository', layer: 'Layer4_Infrastructure', diff: 'unchanged' },
+  'aiboard/src/l4_infra/strategies/mongodb/MongoAgentRepository.ts': { className: 'MongoAgentRepository', layer: 'Layer4_Infrastructure', diff: 'unchanged' },
+  'aiboard/src/l4_infra/strategies/mongodb/MongoSessionRepository.ts': { className: 'MongoSessionRepository', layer: 'Layer4_Infrastructure', diff: 'unchanged' },
+};
+
+function generateSingleClassDiagram(filePath: string): string | null {
+  const classInfo = fileToClassMap[filePath];
+  if (!classInfo) {
+    return null;
+  }
+
+  const { className, layer, diff } = classInfo;
+  let diagram = 'classDiagram\n';
+
+  // Add the single class based on which layer it's in
+  if (layer === 'Layer1_UI') {
+    diagram += `    class ${className}{\n        +render()\n    }\n`;
+  } else if (layer === 'Layer2_Controllers') {
+    diagram += `    class ${className}{\n        -repo\n        +execute()\n    }\n`;
+  } else if (layer === 'Layer3_Domain') {
+    if (className.endsWith('Model')) {
+      diagram += `    class ${className}{\n        +id\n        +name\n        +validate()\n    }\n`;
+    } else {
+      diagram += `    class ${className}{\n        +create()*\n        +findById()*\n    }\n`;
+    }
+  } else if (layer === 'Layer4_Infrastructure') {
+    diagram += `    class ${className}{\n        -client\n        +create()\n    }\n`;
+  }
+
+  // Add styling based on diff status
+  if (diff === 'added') {
+    diagram += `    class ${className}:::added\n`;
+  } else if (diff === 'modified') {
+    diagram += `    class ${className}:::modified\n`;
+  } else {
+    diagram += `    class ${className}:::unchanged\n`;
+  }
+
+  diagram += `    
+    classDef added fill:#22c55e,stroke:#16a34a,stroke-width:4px
+    classDef modified fill:#eab308,stroke:#ca8a04,stroke-width:4px
+    classDef unchanged fill:#e5e7eb,stroke:#9ca3af,stroke-width:2px`;
+
+  return diagram;
+}
+
+export default function StaticView({ selectedFile, syncEnabled, onFileSelect }: StaticViewProps) {
   const [activeTab, setActiveTab] = useState<'usecase' | 'deployment' | 'layers' | 'class'>('usecase');
   const [mermaidRendered, setMermaidRendered] = useState(false);
   const [diagramKey, setDiagramKey] = useState(0);
+  const [renderedSvg, setRenderedSvg] = useState<string>('');
+
+  // Compute diagram and single class diagram BEFORE useEffect hooks
+  const diagram = activeTab === 'deployment' ? deploymentDiagram : activeTab === 'layers' ? layersOverviewDiagram : activeTab === 'class' ? classDiagram : useCaseDiagram;
+  const singleClassDiagram = selectedFile ? generateSingleClassDiagram(selectedFile) : null;
+  const selectedClassName = selectedFile ? fileToClassMap[selectedFile]?.className : null;
 
   useEffect(() => {
     // Dynamically load and render Mermaid (client-side only)
@@ -24,48 +111,29 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
         
         mermaid.initialize({
           startOnLoad: false,
-          theme: 'dark',
-          themeVariables: {
-            primaryColor: '#1e293b',
-            primaryTextColor: '#e2e8f0',
-            primaryBorderColor: '#475569',
-            lineColor: '#64748b',
-            secondaryColor: '#334155',
-            tertiaryColor: '#0f172a',
-            background: '#0f172a',
-            mainBkg: '#1e293b',
-            textColor: '#e2e8f0',
-          },
+          theme: 'default',
+          securityLevel: 'loose',
         });
         
-        // Remove any existing SVG to force clean render
-        const mermaidDiv = document.querySelector('.mermaid');
-        if (mermaidDiv) {
-          const existingSvg = mermaidDiv.querySelector('svg');
-          if (existingSvg) {
-            existingSvg.remove();
-          }
-        }
+        // Render the diagram directly to SVG
+        const diagramCode = singleClassDiagram || diagram.mermaidCode;
+        const uniqueId = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
-        // Find all mermaid elements and render them
-        const elements = document.querySelectorAll('.mermaid');
-        if (elements.length > 0) {
-          await mermaid.run({
-            querySelector: '.mermaid',
-          });
-          setMermaidRendered(true);
-        }
+        const { svg } = await mermaid.render(uniqueId, diagramCode);
+        setRenderedSvg(svg);
+        setMermaidRendered(true);
       } catch (error) {
         console.error('Mermaid rendering error:', error);
+        setMermaidRendered(true); // Still set to true to hide loading
       }
     };
 
-    if (activeTab === 'usecase' || activeTab === 'deployment' || activeTab === 'layers' || activeTab === 'class') {
-      setMermaidRendered(false);
-      setDiagramKey(prev => prev + 1); // Force remount
-      setTimeout(renderMermaid, 200);
-    }
-  }, [activeTab]);
+    // Re-render when tab changes OR when file selection changes
+    setMermaidRendered(false);
+    setRenderedSvg('');
+    setDiagramKey(prev => prev + 1); // Force remount
+    setTimeout(renderMermaid, 100);
+  }, [activeTab, selectedFile, singleClassDiagram, diagram.mermaidCode]);
 
   // Handle diagram click for drill-down navigation
   useEffect(() => {
@@ -89,7 +157,6 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
     return () => document.removeEventListener('click', handleDiagramClick);
   }, [activeTab]);
 
-  const diagram = activeTab === 'deployment' ? deploymentDiagram : activeTab === 'layers' ? layersOverviewDiagram : activeTab === 'class' ? classDiagram : useCaseDiagram;
   const { changesSummary } = diagram;
 
   return (
@@ -174,7 +241,72 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
 
       {/* Main Diagram Area */}
       <div className="flex-1 overflow-auto">
-        {activeTab === 'usecase' || activeTab === 'deployment' || activeTab === 'layers' || activeTab === 'class' ? (
+        {/* Selected File Class Diagram - ONLY show this when a class file is selected */}
+        {singleClassDiagram ? (
+          <div className="w-full h-full p-6">
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Selected Class: {selectedClassName}</h3>
+                  <p className="text-sm text-slate-400">{selectedFile}</p>
+                </div>
+                <button
+                  onClick={() => onFileSelect?.(null)}
+                  className="p-2 hover:bg-slate-700/50 rounded text-slate-400 hover:text-white transition-colors"
+                  title="Clear selection"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div className="relative bg-slate-800/30 rounded-lg p-8 min-h-[calc(100vh-300px)]">
+              {/* Loading Overlay */}
+              {!mermaidRendered && (
+                <div className="absolute inset-0 bg-slate-800/30 rounded-lg flex items-center justify-center z-10">
+                  <div className="text-center">
+                    <div className="w-12 h-12 border-4 border-slate-600 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-slate-400 text-sm">Rendering diagram...</p>
+                  </div>
+                </div>
+              )}
+              
+              <div 
+                key={`single-${selectedFile}-${diagramKey}`}
+                className="mermaid-container single-class-diagram"
+                dangerouslySetInnerHTML={{ __html: renderedSvg }}
+                style={{
+                  opacity: mermaidRendered ? 1 : 0,
+                  transition: 'opacity 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: '400px'
+                }}
+              />
+            </div>
+            
+            <div className="mt-6 p-4 bg-slate-800/30 rounded-lg">
+              <h4 className="text-sm font-semibold text-white mb-3">Legend</h4>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-green-500"></div>
+                  <span className="text-slate-300">Added (New class)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-yellow-500"></div>
+                  <span className="text-slate-300">Modified (Changed class)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-slate-400"></div>
+                  <span className="text-slate-300">Unchanged (Existing class)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : activeTab === 'usecase' || activeTab === 'deployment' || activeTab === 'layers' || activeTab === 'class' ? (
           <div className="w-full h-full p-6">
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-white mb-1">{diagram.title}</h3>
@@ -192,34 +324,33 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
                 </div>
               )}
               
-              {/* Mermaid Diagram - Hidden until rendered */}
+              {/* Mermaid Diagram - Rendered as SVG */}
               <div 
                 key={diagramKey} 
-                className={`mermaid ${(activeTab === 'deployment' || activeTab === 'layers') ? 'cursor-pointer hover:opacity-90' : ''}`}
+                className={`mermaid-container main-diagram ${(activeTab === 'deployment' || activeTab === 'layers') ? 'cursor-pointer hover:opacity-90' : ''}`}
                 title={activeTab === 'deployment' ? 'Click to view Package diagram' : activeTab === 'layers' ? 'Click to view Class diagram' : ''}
+                dangerouslySetInnerHTML={{ __html: renderedSvg }}
                 style={{
                   opacity: mermaidRendered ? 1 : 0,
                   transition: 'opacity 0.3s ease',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  minHeight: '400px',
-                  color: 'transparent',
-                  overflow: 'hidden'
+                  minHeight: '400px'
                 }}
-              >
-                {diagram.mermaidCode}
-              </div>
+              />
               
-              {/* CSS to hide text content */}
-              <style jsx>{`
-                .mermaid {
-                  font-size: 0;
-                  line-height: 0;
+              {/* Force text visibility for all diagrams */}
+              <style jsx global>{`
+                .main-diagram text,
+                .single-class-diagram text {
+                  fill: #000 !important;
+                  font-size: 14px !important;
                 }
-                .mermaid svg {
-                  font-size: 16px;
-                  line-height: 1.5;
+                .main-diagram .classTitle,
+                .single-class-diagram .classTitle {
+                  fill: #000 !important;
+                  font-weight: bold !important;
                 }
               `}</style>
             </div>
