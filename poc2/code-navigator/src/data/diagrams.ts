@@ -29,6 +29,242 @@ export interface Diagram {
 }
 
 // ============================================================================
+// Level 3: Class Diagram (Full Architecture)
+// ============================================================================
+
+export const classDiagram: Diagram = {
+  id: 'level3-class',
+  level: 'class',
+  title: 'Class Diagram - 4-Layer Architecture',
+  description: 'Shows all classes across UI, Controllers, Model, and Infrastructure layers',
+  mermaidCode: `classDiagram
+    %% Relationships
+    ProjectDashboard ..> CreateProjectUseCase
+    ProjectDashboard ..> GetProjectUseCase
+    ProjectBoard ..> CreateTaskUseCase
+    ProjectBoard ..> MoveTaskUseCase
+    ProjectBoard ..> AddColumnUseCase
+    AgentManagement ..> CreateAgentUseCase
+    AgentManagement ..> ListAgentsUseCase
+    AnalyticsDashboard ..> ViewAnalyticsUseCase
+    
+    CreateProjectUseCase ..> ProjectModel
+    CreateProjectUseCase ..> IProjectRepository
+    GetProjectUseCase ..> IProjectRepository
+    CreateTaskUseCase ..> TaskModel
+    CreateTaskUseCase ..> ITaskRepository
+    MoveTaskUseCase ..> ITaskRepository
+    AddColumnUseCase ..> ProjectModel
+    AddColumnUseCase ..> IProjectRepository
+    CreateAgentUseCase ..> AgentModel
+    CreateAgentUseCase ..> IAgentRepository
+    ListAgentsUseCase ..> IAgentRepository
+    ViewAnalyticsUseCase ..> SessionModel
+    ViewAnalyticsUseCase ..> ISessionRepository
+    SignInWithGithubUseCase ..> UserModel
+    SignInWithGithubUseCase ..> IUserRepository
+    
+    IProjectRepository <|.. MongoProjectRepository
+    ITaskRepository <|.. MongoTaskRepository
+    IAgentRepository <|.. MongoAgentRepository
+    ISessionRepository <|.. MongoSessionRepository
+    IUserRepository <|.. MongoUserRepository
+    
+    namespace Layer1_UI {
+        class ProjectDashboard{
+            +render()
+            +handleCreate()
+        }
+        class ProjectBoard{
+            +render()
+            +handleMove()
+        }
+        class AgentManagement{
+            +render()
+            +handleCreate()
+        }
+        class AnalyticsDashboard{
+            +render()
+            +fetchMetrics()
+        }
+    }
+    
+    namespace Layer2_Controllers {
+        class CreateProjectUseCase{
+            -projectRepo
+            +execute()
+        }
+        class GetProjectUseCase{
+            -projectRepo
+            +execute()
+        }
+        class CreateTaskUseCase{
+            -taskRepo
+            +execute()
+        }
+        class MoveTaskUseCase{
+            -taskRepo
+            +execute()
+        }
+        class AddColumnUseCase{
+            -projectRepo
+            +execute()
+        }
+        class CreateAgentUseCase{
+            -agentRepo
+            +execute()
+        }
+        class ListAgentsUseCase{
+            -agentRepo
+            +execute()
+        }
+        class ViewAnalyticsUseCase{
+            -sessionRepo
+            +execute()
+        }
+        class SignInWithGithubUseCase{
+            -userRepo
+            +execute()
+        }
+    }
+    
+    namespace Layer3_Domain {
+        class ProjectModel{
+            +id
+            +name
+            +githubRepo
+            +columns
+            +validate()
+        }
+        class TaskModel{
+            +id
+            +title
+            +status
+            +assignedAgentId
+            +validate()
+        }
+        class AgentModel{
+            +id
+            +name
+            +avatar
+            +capabilities
+            +validate()
+        }
+        class SessionModel{
+            +id
+            +taskId
+            +status
+            +startedAt
+        }
+        class UserModel{
+            +id
+            +email
+            +displayName
+            +githubToken
+        }
+        class ColumnModel{
+            +id
+            +name
+            +order
+        }
+        class IProjectRepository{
+            +create()*
+            +findById()*
+            +update()*
+        }
+        class ITaskRepository{
+            +create()*
+            +findById()*
+            +update()*
+        }
+        class IAgentRepository{
+            +create()*
+            +findById()*
+            +findByProject()*
+        }
+        class ISessionRepository{
+            +create()*
+            +findByTask()*
+        }
+        class IUserRepository{
+            +create()*
+            +findById()*
+            +findByEmail()*
+        }
+    }
+    
+    namespace Layer4_Infrastructure {
+        class MongoProjectRepository{
+            -client
+            -collection
+            +create()
+            +findById()
+            +update()
+        }
+        class MongoTaskRepository{
+            -client
+            -collection
+            +create()
+            +findById()
+            +update()
+        }
+        class MongoAgentRepository{
+            -client
+            -collection
+            +create()
+            +findByProject()
+        }
+        class MongoSessionRepository{
+            -client
+            -collection
+            +create()
+            +findByTask()
+        }
+        class MongoUserRepository{
+            -client
+            -collection
+            +create()
+            +findById()
+            +findByEmail()
+        }
+    }
+    
+    %% Styling
+    class ProjectDashboard:::modified
+    class AnalyticsDashboard:::added
+    
+    class CreateProjectUseCase:::modified
+    class ViewAnalyticsUseCase:::added
+    
+    class ProjectModel:::modified
+    
+    class MongoProjectRepository:::modified
+    
+    classDef added fill:#22c55e,stroke:#16a34a,stroke-width:4px
+    classDef modified fill:#eab308,stroke:#ca8a04,stroke-width:4px
+    classDef unchanged fill:#e5e7eb,stroke:#9ca3af,stroke-width:2px`,
+  elements: [
+    // Added
+    { id: 'AnalyticsDashboard', name: 'AnalyticsDashboard', type: 'class', diff: { status: 'added', description: 'NEW: Analytics dashboard' }, path: 'aiboard/src/l1_ui/pages/AnalyticsDashboard.tsx' },
+    { id: 'ViewAnalyticsUseCase', name: 'ViewAnalyticsUseCase', type: 'class', diff: { status: 'added', description: 'NEW: Analytics use case' }, path: 'aiboard/src/l2_controllers/analytics/ViewAnalyticsUseCase.ts' },
+    // Modified
+    { id: 'ProjectDashboard', name: 'ProjectDashboard', type: 'class', diff: { status: 'modified', description: 'Added analytics link' }, path: 'aiboard/src/l1_ui/pages/ProjectDashboard.tsx' },
+    { id: 'CreateProjectUseCase', name: 'CreateProjectUseCase', type: 'class', diff: { status: 'modified', description: 'Enhanced validation' }, path: 'aiboard/src/l2_controllers/project/CreateProjectUseCase.ts' },
+    { id: 'ProjectModel', name: 'ProjectModel', type: 'class', diff: { status: 'modified', description: 'Added analytics metadata' }, path: 'aiboard/src/l3_model/ProjectModel.ts' },
+    { id: 'MongoProjectRepository', name: 'MongoProjectRepository', type: 'class', diff: { status: 'modified', description: 'Updated schema' }, path: 'aiboard/src/l4_infra/strategies/mongodb/MongoProjectRepository.ts' },
+    // Unchanged (sample)
+    { id: 'ProjectBoard', name: 'ProjectBoard', type: 'class', diff: { status: 'unchanged' }, path: 'aiboard/src/l1_ui/pages/ProjectBoard.tsx' },
+    { id: 'CreateTaskUseCase', name: 'CreateTaskUseCase', type: 'class', diff: { status: 'unchanged' }, path: 'aiboard/src/l2_controllers/task/CreateTaskUseCase.ts' },
+  ],
+  changesSummary: {
+    added: 2,
+    modified: 4,
+    deleted: 0,
+    unchanged: 24,
+  },
+};
+
+// ============================================================================
 // Level 2: Deployment Diagram (UML)
 // ============================================================================
 
@@ -394,4 +630,5 @@ export const useCaseDiagram: Diagram = {
 export const allDiagrams = {
   usecase: useCaseDiagram,
   deployment: deploymentDiagram,
+  class: classDiagram,
 };
