@@ -38,39 +38,39 @@ export const deploymentDiagram: Diagram = {
   title: 'Deployment Diagram - aiboard Architecture',
   description: 'Shows where applications are deployed, databases, and external services',
   mermaidCode: `graph TB
-    subgraph aiboard[aiboard Platform]
-        direction LR
-        webapp[Web Application<br/>Next.js, Port 3000<br/>4-layer architecture]
-        agentrunner[Agent Runner<br/>Node.js Script<br/>Cloud Run Deployment]
-    end
+    webapp["<b>Web Application</b><br/>━━━━━━━━━━━━━<br/>Next.js, Port 3000<br/>4-layer architecture"]
     
-    db[(MongoDB<br/>Database)]
+    agentrunner["<b>Agent Runner</b><br/>━━━━━━━━━━━━━<br/>Node.js Script<br/>Cloud Run"]
     
-    subgraph external[External Services]
-        direction TB
-        github[GitHub<br/>Repository & OAuth]
-        gcp[Cloud Run<br/>Job Platform]
-        openai[OpenAI API<br/>LLM Service]
-        aider[Aider<br/>AI Programming]
-    end
+    webapp --> db
+    agentrunner --> db
     
-    webapp <-->|Read/Write| db
-    webapp -->|OAuth & PR| github
-    webapp -->|Dispatch| gcp
+    db[("<b>MongoDB</b><br/>━━━━━━━<br/>Database")]
     
-    gcp -->|Execute| agentrunner
-    agentrunner -->|Progress| db
+    db --> github
+    db --> gcp
+    db --> openai
+    db --> aider
+    
+    github["<b>GitHub</b><br/>Repository & OAuth"]
+    gcp["<b>Cloud Run</b><br/>Job Platform"]
+    openai["<b>OpenAI API</b><br/>LLM Service"]
+    aider["<b>Aider</b><br/>AI Pair Prog"]
+    
+    webapp -->|Dispatch<br/>Jobs| gcp
+    webapp -->|OAuth<br/>Create PR| github
+    gcp -.->|Execute| agentrunner
     agentrunner -->|LLM| openai
     agentrunner -->|Edit| aider
     agentrunner -->|Commit| github
     
-    classDef container fill:#3b82f6,stroke:#2563eb,stroke-width:3px,color:#fff
-    classDef containerModified fill:#eab308,stroke:#ca8a04,stroke-width:3px,color:#000
-    classDef database fill:#8b5cf6,stroke:#7c3aed,stroke-width:3px,color:#fff
+    classDef platform fill:#3b82f6,stroke:#2563eb,stroke-width:4px,color:#fff,font-weight:bold
+    classDef platformModified fill:#eab308,stroke:#ca8a04,stroke-width:4px,color:#000,font-weight:bold
+    classDef database fill:#8b5cf6,stroke:#7c3aed,stroke-width:4px,color:#fff,font-weight:bold
     classDef external fill:#64748b,stroke:#475569,stroke-width:2px,color:#fff
     
-    class webapp container
-    class agentrunner containerModified
+    class webapp platform
+    class agentrunner platformModified
     class db database
     class github,gcp,openai,aider external`,
   elements: [
