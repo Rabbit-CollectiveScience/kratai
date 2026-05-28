@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { sequenceDiagrams } from '@/data/sequenceDiagrams';
 
 interface DynamicViewProps {
   selectedMethod: string | null;
@@ -8,71 +9,45 @@ interface DynamicViewProps {
   syncEnabled: boolean;
 }
 
-// Hardcoded sequence diagram for ProjectDashboard.handleCreate() 
-const createProjectSequenceDiagram = `sequenceDiagram
-    participant UI as ProjectDashboard<br/>(Layer 1: UI)
-    participant UC as CreateProjectUseCase<br/>(Layer 2: Controller)
-    participant Model as ProjectModel<br/>(Layer 3: Domain)
-    participant Repo as IProjectRepository<br/>(Layer 3: Interface)
-    participant Mongo as MongoProjectRepository<br/>(Layer 4: Infrastructure)
-    participant DB as MongoDB
-
-    Note over UI: User clicks "Create Project"
-    UI->>+UC: execute(projectData)
-    Note over UC: Validate input
-    UC->>+Model: new ProjectModel(data)
-    Model->>Model: validate()
-    alt validation fails
-        Model-->>UC: ValidationError
-        UC-->>UI: Error response
-    else validation succeeds
-        Model-->>-UC: valid ProjectModel
-        UC->>+Repo: create(projectModel)
-        Note over Repo: Interface contract
-        Repo->>+Mongo: create(projectModel)
-        Mongo->>Mongo: toDocument()
-        Mongo->>+DB: insertOne(document)
-        DB-->>-Mongo: {_id, ...}
-        Mongo->>Mongo: toDomain(document)
-        Mongo-->>-Repo: ProjectModel
-        Repo-->>-UC: ProjectModel
-        UC-->>-UI: Success + ProjectModel
-        Note over UI: Update UI & redirect
-    end`;
-
-export default function DynamicView({ selectedMethod, onMethodSelect, syncEnabled }: DynamicViewProps) {
+export default function DynamicView({ selectedMethod, onMethodSelect }: DynamicViewProps) {
   const [renderedSvg, setRenderedSvg] = useState<string>('');
   const [isRendering, setIsRendering] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const currentDiagram = selectedMethod ? sequenceDiagrams[selectedMethod] : null;
+
   useEffect(() => {
     const renderSequenceDiagram = async () => {
-      if (!selectedMethod || selectedMethod !== 'handleCreate') return;
-      
+      if (!currentDiagram) {
+        setRenderedSvg('');
+        return;
+      }
+
       setIsRendering(true);
-      
+
       try {
         const mermaidModule = await import('mermaid');
         const mermaid = mermaidModule.default;
-        
+
         mermaid.initialize({
           startOnLoad: false,
           theme: 'default',
           securityLevel: 'loose',
         });
-        
-        const uniqueId = `sequence-${Date.now()}`;
-        const { svg } = await mermaid.render(uniqueId, createProjectSequenceDiagram);
+
+        const uniqueId = `sequence-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const { svg } = await mermaid.render(uniqueId, currentDiagram.code);
         setRenderedSvg(svg);
       } catch (error) {
         console.error('Error rendering sequence diagram:', error);
+        setRenderedSvg('<div style="color: red; padding: 20px;">Failed to render diagram</div>');
       } finally {
         setIsRendering(false);
       }
     };
 
     renderSequenceDiagram();
-  }, [selectedMethod]);
+  }, [currentDiagram]);
 
   return (
     <div className="w-[40%] bg-slate-900 flex flex-col">
@@ -85,17 +60,10 @@ export default function DynamicView({ selectedMethod, onMethodSelect, syncEnable
           <h2 className="text-white font-semibold">Behavioral View</h2>
         </div>
 
-        {/* Tabs */}
         <div className="flex items-center gap-1">
-          <button className="px-3 py-1.5 bg-slate-700/50 text-white text-sm rounded-lg">
-            Sequence
-          </button>
-          <button className="px-3 py-1.5 text-slate-400 hover:text-white text-sm rounded-lg hover:bg-slate-700/30">
-            Flow
-          </button>
-          <button className="px-3 py-1.5 text-slate-400 hover:text-white text-sm rounded-lg hover:bg-slate-700/30">
-            Timeline
-          </button>
+          <button className="px-3 py-1.5 bg-slate-700/50 text-white text-sm rounded-lg">Sequence</button>
+          <button className="px-3 py-1.5 text-slate-400 hover:text-white text-sm rounded-lg hover:bg-slate-700/30">Flow</button>
+          <button className="px-3 py-1.5 text-slate-400 hover:text-white text-sm rounded-lg hover:bg-slate-700/30">Timeline</button>
         </div>
       </div>
 
@@ -104,13 +72,17 @@ export default function DynamicView({ selectedMethod, onMethodSelect, syncEnable
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <label className="text-xs text-slate-400 mb-1 block">Select Method</label>
-            <select 
+            <select
               value={selectedMethod || ''}
               onChange={(e) => onMethodSelect(e.target.value || null)}
               className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50"
             >
               <option value="">No method selected</option>
-              <option value="handleCreate">ProjectDashboard.handleCreate()</option>
+              {Object.keys(sequenceDiagrams).map((key) => (
+                <option key={key} value={key}>
+                  {key}()
+                </option>
+              ))}
             </select>
           </div>
           {selectedMethod && (
@@ -129,13 +101,13 @@ export default function DynamicView({ selectedMethod, onMethodSelect, syncEnable
 
       {/* Main Diagram Area */}
       <div className="flex-1 overflow-auto">
-        {selectedMethod === 'handleCreate' ? (
+        {currentDiagram ? (
           <div className="w-full h-full p-6">
             <div className="mb-4">
-              <h3 className="text-lg font-semibold text-white mb-1">Sequence: Create Project Flow</h3>
-              <p className="text-sm text-slate-400">Shows the execution flow when user creates a new project</p>
+              <h3 className="text-lg font-semibold text-white mb-1">{currentDiagram.title}</h3>
+              <p className="text-sm text-slate-400">{currentDiagram.description}</p>
             </div>
-            
+
             <div className="relative bg-slate-800/30 rounded-lg p-8">
               {isRendering && (
                 <div className="absolute inset-0 bg-slate-800/30 rounded-lg flex items-center justify-center z-10">
@@ -145,8 +117,8 @@ export default function DynamicView({ selectedMethod, onMethodSelect, syncEnable
                   </div>
                 </div>
               )}
-              
-              <div 
+
+              <div
                 ref={containerRef}
                 className="sequence-diagram-container"
                 dangerouslySetInnerHTML={{ __html: renderedSvg }}
@@ -159,7 +131,7 @@ export default function DynamicView({ selectedMethod, onMethodSelect, syncEnable
                   minHeight: '500px',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
                 }}
               />
             </div>
@@ -174,7 +146,7 @@ export default function DynamicView({ selectedMethod, onMethodSelect, syncEnable
               </div>
               <h3 className="text-slate-300 font-medium mb-2">Sequence Diagram</h3>
               <p className="text-slate-500 text-sm max-w-md">
-                Select a method from the dropdown above or click on handleCreate() in the ProjectDashboard class diagram to see its execution flow.
+                Select a method from the dropdown above or click on any blue method in a yellow/green class to see its execution flow.
               </p>
             </div>
           </div>
@@ -186,7 +158,7 @@ export default function DynamicView({ selectedMethod, onMethodSelect, syncEnable
         <div className="text-xs">
           <div className="text-slate-400 font-medium mb-2">Method Info</div>
           <div className="space-y-1 text-slate-500">
-            <div>No method selected</div>
+            {selectedMethod ? <div className="text-blue-400">{selectedMethod}()</div> : <div>No method selected</div>}
           </div>
         </div>
       </div>

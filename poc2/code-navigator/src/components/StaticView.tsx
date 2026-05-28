@@ -2,12 +2,36 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useCaseDiagram, deploymentDiagram, layersOverviewDiagram, classDiagram } from '@/data/diagrams';
+import { sequenceDiagrams } from '@/data/sequenceDiagrams';
+
+// Helper: find the class name for a clicked method element by walking up the SVG DOM
+function findClassForMethodElement(methodEl: Element): string | null {
+  // Walk up to find the nearest <g> node group that represents a class
+  let node: Element | null = methodEl;
+  while (node && node.tagName.toLowerCase() !== 'g') {
+    node = node.parentElement;
+  }
+  // Keep walking up to find a group whose first text-like child is the class name
+  while (node) {
+    // Look for class-name text within this group (a <p> without parens)
+    const candidates = node.querySelectorAll('p, span, text');
+    for (const c of Array.from(candidates)) {
+      const t = c.textContent?.trim() || '';
+      if (t && !t.includes('(') && !t.startsWith('+') && !t.startsWith('-') && !t.startsWith('#') && t.length < 50) {
+        // Likely a class name
+        return t;
+      }
+    }
+    node = node.parentElement;
+  }
+  return null;
+}
 
 interface StaticViewProps {
   selectedFile: string | null;
   syncEnabled: boolean;
   onFileSelect?: (file: string | null) => void;
-  onMethodSelect?: (method: string) => void;
+  onMethodSelect?: (method: string | null) => void;
 }
 
 // Map files to their classes for single-class diagrams
@@ -159,100 +183,88 @@ export default function StaticView({ selectedFile, syncEnabled, onFileSelect, on
     return () => document.removeEventListener('click', handleDiagramClick);
   }, [activeTab]);
 
-  // Handle method clicks in class diagrams (using POC approach)
+  // Handle method clicks in class diagrams using EVENT DELEGATION
   useEffect(() => {
-    if (!mermaidRendered || !diagramContainerRef.current || !onMethodSelect) {
-      return;
-    }
+    const container = diagramContainerRef.current;
+    if (!container || !onMethodSelect) return;
 
-    // Recursive retry with attempts - just like POC
-    const attemptSetup = (attempt = 1) => {
-      console.log(`Attempt ${attempt}: Setting up method click handlers...`);
-      console.log('Container:', diagramContainerRef.current);
-      
-      const svgElement = diagramContainerRef.current?.querySelector('svg');
-      console.log('SVG element found:', !!svgElement);
-      
-      if (!svgElement) {
-        if (attempt < 10) {
-          console.log('SVG not found yet, retrying...');
-          setTimeout(() => attemptSetup(attempt + 1), 300);
-        } else {
-          console.log('Failed to find SVG after 10 attempts');
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target) return;
+      const text = target.textContent?.trim() || '';
+
+      if (text.includes('(') && text.includes(')') && text.length < 50 && target.children.length === 0) {
+        // Extract method name (strip +/-/# prefix and parentheses)
+        const methodName = text.replace(/^[+\-#]/, '').replace(/\(.*\)$/, '').trim();
+        if (!methodName) return;
+
+        // Find the class this method belongs to by walking up the SVG
+        const className = findClassForMethodElement(target);
+        if (!className) return;
+
+        const key = `${className}.${methodName}`;
+        if (sequenceDiagrams[key]) {
+          e.stopPropagation();
+          e.preventDefault();
+          console.log('Method clicked:', key);
+          onMethodSelect(key);
         }
+      }
+    };
+
+    container.addEventListener('click', handleClick);
+    return () => container.removeEventListener('click', handleClick);
+  }, [onMethodSelect]);
+
+  // Apply visual styling to clickable methods (methods that have a sequence diagram)
+  useEffect(() => {
+    if (!mermaidRendered || !diagramContainerRef.current) return;
+
+    const applyStyling = (attempt = 1) => {
+      const svgElement = diagramContainerRef.current?.querySelector('svg');
+      if (!svgElement) {
+        if (attempt < 10) setTimeout(() => applyStyling(attempt + 1), 300);
         return;
       }
-      
-      // === DEEP DIAGNOSTIC LOGGING ===
-      console.log('=== SVG STRUCTURE INSPECTION ===');
-      console.log('All <text> count:', svgElement.querySelectorAll('text').length);
-      console.log('All <p> count:', svgElement.querySelectorAll('p').length);
-      console.log('All <span> count:', svgElement.querySelectorAll('span').length);
-      console.log('=== END INSPECTION ===');
-      
-      // Mermaid renders class diagram text inside <p> elements (HTML labels via foreignObject)
-      // Query for <p>, <span>, and <text> to cover all possible diagram types
+
       const textElements = svgElement.querySelectorAll('p, span, text');
-      console.log('Total text-like elements found:', textElements.length);
-      
       if (textElements.length === 0 && attempt < 10) {
-        console.log('No text elements yet, retrying...');
-        setTimeout(() => attemptSetup(attempt + 1), 300);
+        setTimeout(() => applyStyling(attempt + 1), 300);
         return;
       }
-      
-      let methodCount = 0;
+
       textElements.forEach((el) => {
         const text = el.textContent?.trim() || '';
-        
-        // Check if it looks like a method (contains parentheses)
-        // Skip elements that contain other elements with the same text (avoid duplicates)
-        if (text.includes('(') && text.includes(')') && text.length < 50) {
-          // Only attach to leaf elements (no children with same text)
-          const hasChildWithSameText = Array.from(el.children).some(
-            child => child.textContent?.trim() === text
-          );
-          if (hasChildWithSameText) return;
-          
-          methodCount++;
-          console.log('Making method clickable:', text);
-          
+        if (!text.includes('(') || !text.includes(')') || text.length >= 50) return;
+
+        // Skip wrapper elements
+        const hasChildWithSameText = Array.from(el.children).some(
+          (child) => child.textContent?.trim() === text
+        );
+        if (hasChildWithSameText) return;
+
+        const methodName = text.replace(/^[+\-#]/, '').replace(/\(.*\)$/, '').trim();
+        if (!methodName) return;
+
+        const className = findClassForMethodElement(el);
+        if (!className) return;
+
+        const key = `${className}.${methodName}`;
+        if (sequenceDiagrams[key]) {
           const htmlEl = el as HTMLElement;
           htmlEl.style.cursor = 'pointer';
           htmlEl.style.color = '#2563eb';
           htmlEl.style.textDecoration = 'underline';
           htmlEl.style.fontWeight = '600';
-          
-          htmlEl.addEventListener('mouseenter', () => {
-            htmlEl.style.color = '#1d4ed8';
-          });
-          
-          htmlEl.addEventListener('mouseleave', () => {
-            htmlEl.style.color = '#2563eb';
-          });
-          
-          const clickHandler = (e: Event) => {
-            e.stopPropagation();
-            e.preventDefault();
-            console.log('Method clicked:', text);
-            // Only handleCreate has a sequence diagram for now
-            if (text.includes('handleCreate')) {
-              onMethodSelect('handleCreate');
-            }
-          };
-          
-          htmlEl.addEventListener('click', clickHandler);
+          htmlEl.setAttribute('data-clickable', key);
         }
       });
-      
-      console.log('Total methods made clickable:', methodCount);
     };
-    
-    // Start after mermaid is fully rendered and painted
-    const timer = setTimeout(() => attemptSetup(1), 500);
-    
-    return () => clearTimeout(timer);
-  }, [mermaidRendered, onMethodSelect, activeTab, selectedFile]);
+
+    setTimeout(() => applyStyling(1), 500);
+    const interval = setInterval(() => applyStyling(1), 2000);
+    return () => clearInterval(interval);
+  }, [mermaidRendered, activeTab, selectedFile]);
 
   const { changesSummary } = diagram;
 
