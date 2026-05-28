@@ -15,7 +15,7 @@ export default function DynamicView({ selectedMethod, onMethodSelect, syncEnable
           <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
-          <h2 className="text-white font-semibold">Dynamic View</h2>
+          <h2 className="text-white font-semibold">Behavioral View</h2>
         </div>
 
         {/* Tabs */}

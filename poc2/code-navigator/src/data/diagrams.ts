@@ -29,14 +29,14 @@ export interface Diagram {
 }
 
 // ============================================================================
-// Level 2: Container Diagram (C4-inspired)
+// Level 2: Deployment Diagram (UML)
 // ============================================================================
 
-export const containerDiagram: Diagram = {
-  id: 'level2-container',
+export const deploymentDiagram: Diagram = {
+  id: 'level2-deployment',
   level: 'container',
-  title: 'Container Diagram - aiboard Architecture',
-  description: 'Shows deployable applications, databases, and external services',
+  title: 'Deployment Diagram - aiboard Architecture',
+  description: 'Shows where applications are deployed, databases, and external services',
   mermaidCode: `graph TB
     subgraph aiboard[aiboard Platform]
         direction LR
@@ -397,5 +397,5 @@ export const useCaseDiagram: Diagram = {
 // Export all diagrams
 export const allDiagrams = {
   usecase: useCaseDiagram,
-  container: containerDiagram,
+  deployment: deploymentDiagram,
 };

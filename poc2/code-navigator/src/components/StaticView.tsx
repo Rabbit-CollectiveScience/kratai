@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useCaseDiagram, containerDiagram } from '@/data/diagrams';
+import { useCaseDiagram, deploymentDiagram } from '@/data/diagrams';
 
 interface StaticViewProps {
   selectedFile: string | null;
@@ -9,7 +9,7 @@ interface StaticViewProps {
 }
 
 export default function StaticView({ selectedFile, syncEnabled }: StaticViewProps) {
-  const [activeTab, setActiveTab] = useState<'usecase' | 'container' | 'class'>('usecase');
+  const [activeTab, setActiveTab] = useState<'usecase' | 'deployment' | 'class'>('usecase');
   const [mermaidRendered, setMermaidRendered] = useState(false);
   const [diagramKey, setDiagramKey] = useState(0);
 
@@ -60,14 +60,14 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
       }
     };
 
-    if (activeTab === 'usecase' || activeTab === 'container') {
+    if (activeTab === 'usecase' || activeTab === 'deployment') {
       setMermaidRendered(false);
       setDiagramKey(prev => prev + 1); // Force remount
       setTimeout(renderMermaid, 150);
     }
   }, [activeTab]);
 
-  const diagram = activeTab === 'container' ? containerDiagram : useCaseDiagram;
+  const diagram = activeTab === 'deployment' ? deploymentDiagram : useCaseDiagram;
   const { changesSummary } = diagram;
 
   return (
@@ -78,7 +78,7 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
           <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
           </svg>
-          <h2 className="text-white font-semibold">Static View</h2>
+          <h2 className="text-white font-semibold">Structure View</h2>
         </div>
 
         {/* Tabs */}
@@ -94,14 +94,14 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
             Use Cases
           </button>
           <button
-            onClick={() => setActiveTab('container')}
+            onClick={() => setActiveTab('deployment')}
             className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-              activeTab === 'container'
+              activeTab === 'deployment'
                 ? 'bg-slate-700/50 text-white'
                 : 'text-slate-400 hover:text-white hover:bg-slate-700/30'
             }`}
           >
-            Container
+            Deployment
           </button>
           <button
             onClick={() => setActiveTab('class')}
@@ -117,7 +117,7 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
       </div>
 
       {/* Change Summary Bar */}
-      {(activeTab === 'usecase' || activeTab === 'container') && (
+      {(activeTab === 'usecase' || activeTab === 'deployment') && (
         <div className="px-4 py-2 bg-slate-800/30 border-b border-slate-700 flex items-center justify-between">
           <div className="flex items-center gap-4 text-xs">
             <span className="text-slate-400">Changes:</span>
@@ -135,14 +135,14 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
             </div>
           </div>
           <div className="text-xs text-slate-500">
-            {changesSummary.added + changesSummary.modified + changesSummary.deleted} {activeTab === 'container' ? 'containers' : 'use cases'} affected
+            {changesSummary.added + changesSummary.modified + changesSummary.deleted} {activeTab === 'deployment' ? 'components' : 'use cases'} affected
           </div>
         </div>
       )}
 
       {/* Main Diagram Area */}
       <div className="flex-1 overflow-auto">
-        {activeTab === 'usecase' || activeTab === 'container' ? (
+        {activeTab === 'usecase' || activeTab === 'deployment' ? (
           <div className="w-full h-full p-6">
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-white mb-1">{diagram.title}</h3>
@@ -172,7 +172,7 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
             <div className="mt-6 p-4 bg-slate-800/30 rounded-lg">
               <h4 className="text-sm font-semibold text-white mb-3">Legend</h4>
               <div className="grid grid-cols-2 gap-3 text-xs">
-                {activeTab === 'container' ? (
+                {activeTab === 'deployment' ? (
                   <>
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded bg-blue-500"></div>

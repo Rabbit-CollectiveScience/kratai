@@ -30,13 +30,13 @@ export default function NavigatorPage() {
           onFileSelect={setSelectedFile}
         />
 
-        {/* Middle Panel: Static View */}
+        {/* Middle Panel: Structure View */}
         <StaticView 
           selectedFile={selectedFile}
           syncEnabled={syncEnabled}
         />
 
-        {/* Right Panel: Dynamic View */}
+        {/* Right Panel: Behavioral View */}
         <DynamicView 
           selectedMethod={selectedMethod}
           onMethodSelect={setSelectedMethod}
