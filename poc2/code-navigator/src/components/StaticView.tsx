@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useCaseDiagram, deploymentDiagram, layersOverviewDiagram, classDiagram } from '@/data/diagrams';
 
 interface StaticViewProps {
   selectedFile: string | null;
   syncEnabled: boolean;
   onFileSelect?: (file: string | null) => void;
+  onMethodSelect?: (method: string) => void;
 }
 
 // Map files to their classes for single-class diagrams
@@ -59,7 +60,7 @@ function generateSingleClassDiagram(filePath: string): string | null {
 
   // Add the single class based on which layer it's in
   if (layer === 'Layer1_UI') {
-    diagram += `    class ${className}{\n        +render()\n    }\n`;
+    diagram += `    class ${className}{\n        +render()\n        +handleCreate()\n    }\n`;
   } else if (layer === 'Layer2_Controllers') {
     diagram += `    class ${className}{\n        -repo\n        +execute()\n    }\n`;
   } else if (layer === 'Layer3_Domain') {
@@ -89,11 +90,12 @@ function generateSingleClassDiagram(filePath: string): string | null {
   return diagram;
 }
 
-export default function StaticView({ selectedFile, syncEnabled, onFileSelect }: StaticViewProps) {
+export default function StaticView({ selectedFile, syncEnabled, onFileSelect, onMethodSelect }: StaticViewProps) {
   const [activeTab, setActiveTab] = useState<'usecase' | 'deployment' | 'layers' | 'class'>('usecase');
   const [mermaidRendered, setMermaidRendered] = useState(false);
   const [diagramKey, setDiagramKey] = useState(0);
   const [renderedSvg, setRenderedSvg] = useState<string>('');
+  const diagramContainerRef = useRef<HTMLDivElement>(null);
 
   // Compute diagram and single class diagram BEFORE useEffect hooks
   const diagram = activeTab === 'deployment' ? deploymentDiagram : activeTab === 'layers' ? layersOverviewDiagram : activeTab === 'class' ? classDiagram : useCaseDiagram;
@@ -156,6 +158,101 @@ export default function StaticView({ selectedFile, syncEnabled, onFileSelect }: 
     document.addEventListener('click', handleDiagramClick);
     return () => document.removeEventListener('click', handleDiagramClick);
   }, [activeTab]);
+
+  // Handle method clicks in class diagrams (using POC approach)
+  useEffect(() => {
+    if (!mermaidRendered || !diagramContainerRef.current || !onMethodSelect) {
+      return;
+    }
+
+    // Recursive retry with attempts - just like POC
+    const attemptSetup = (attempt = 1) => {
+      console.log(`Attempt ${attempt}: Setting up method click handlers...`);
+      console.log('Container:', diagramContainerRef.current);
+      
+      const svgElement = diagramContainerRef.current?.querySelector('svg');
+      console.log('SVG element found:', !!svgElement);
+      
+      if (!svgElement) {
+        if (attempt < 10) {
+          console.log('SVG not found yet, retrying...');
+          setTimeout(() => attemptSetup(attempt + 1), 300);
+        } else {
+          console.log('Failed to find SVG after 10 attempts');
+        }
+        return;
+      }
+      
+      // === DEEP DIAGNOSTIC LOGGING ===
+      console.log('=== SVG STRUCTURE INSPECTION ===');
+      console.log('All <text> count:', svgElement.querySelectorAll('text').length);
+      console.log('All <p> count:', svgElement.querySelectorAll('p').length);
+      console.log('All <span> count:', svgElement.querySelectorAll('span').length);
+      console.log('=== END INSPECTION ===');
+      
+      // Mermaid renders class diagram text inside <p> elements (HTML labels via foreignObject)
+      // Query for <p>, <span>, and <text> to cover all possible diagram types
+      const textElements = svgElement.querySelectorAll('p, span, text');
+      console.log('Total text-like elements found:', textElements.length);
+      
+      if (textElements.length === 0 && attempt < 10) {
+        console.log('No text elements yet, retrying...');
+        setTimeout(() => attemptSetup(attempt + 1), 300);
+        return;
+      }
+      
+      let methodCount = 0;
+      textElements.forEach((el) => {
+        const text = el.textContent?.trim() || '';
+        
+        // Check if it looks like a method (contains parentheses)
+        // Skip elements that contain other elements with the same text (avoid duplicates)
+        if (text.includes('(') && text.includes(')') && text.length < 50) {
+          // Only attach to leaf elements (no children with same text)
+          const hasChildWithSameText = Array.from(el.children).some(
+            child => child.textContent?.trim() === text
+          );
+          if (hasChildWithSameText) return;
+          
+          methodCount++;
+          console.log('Making method clickable:', text);
+          
+          const htmlEl = el as HTMLElement;
+          htmlEl.style.cursor = 'pointer';
+          htmlEl.style.color = '#2563eb';
+          htmlEl.style.textDecoration = 'underline';
+          htmlEl.style.fontWeight = '600';
+          
+          htmlEl.addEventListener('mouseenter', () => {
+            htmlEl.style.color = '#1d4ed8';
+          });
+          
+          htmlEl.addEventListener('mouseleave', () => {
+            htmlEl.style.color = '#2563eb';
+          });
+          
+          const clickHandler = (e: Event) => {
+            e.stopPropagation();
+            e.preventDefault();
+            console.log('Method clicked:', text);
+            // Only handleCreate has a sequence diagram for now
+            if (text.includes('handleCreate')) {
+              onMethodSelect('handleCreate');
+            }
+          };
+          
+          htmlEl.addEventListener('click', clickHandler);
+        }
+      });
+      
+      console.log('Total methods made clickable:', methodCount);
+    };
+    
+    // Start after mermaid is fully rendered and painted
+    const timer = setTimeout(() => attemptSetup(1), 500);
+    
+    return () => clearTimeout(timer);
+  }, [mermaidRendered, onMethodSelect, activeTab, selectedFile]);
 
   const { changesSummary } = diagram;
 
@@ -252,7 +349,7 @@ export default function StaticView({ selectedFile, syncEnabled, onFileSelect }: 
       )}
 
       {/* Main Diagram Area */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto" ref={diagramContainerRef}>
         {/* Selected File Class Diagram - ONLY show this when a class file is selected */}
         {singleClassDiagram ? (
           <div className="w-full h-full p-6">
@@ -298,7 +395,8 @@ export default function StaticView({ selectedFile, syncEnabled, onFileSelect }: 
                   minHeight: '400px',
                   background: 'white',
                   borderRadius: '8px',
-                  padding: '20px'
+                  padding: '20px',
+                  pointerEvents: 'auto'
                 }}
               />
             </div>
@@ -354,7 +452,8 @@ export default function StaticView({ selectedFile, syncEnabled, onFileSelect }: 
                   minHeight: '400px',
                   background: 'white',
                   borderRadius: '8px',
-                  padding: '20px'
+                  padding: '20px',
+                  pointerEvents: 'auto'
                 }}
               />
               
@@ -362,7 +461,7 @@ export default function StaticView({ selectedFile, syncEnabled, onFileSelect }: 
               <style jsx global>{`
                 .main-diagram text,
                 .single-class-diagram text {
-                  fill: #000 !important;
+                  fill: #000;
                   font-size: 14px !important;
                 }
                 .main-diagram .classTitle,

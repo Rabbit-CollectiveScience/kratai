@@ -35,6 +35,7 @@ export default function NavigatorPage() {
           selectedFile={selectedFile}
           syncEnabled={syncEnabled}
           onFileSelect={setSelectedFile}
+          onMethodSelect={setSelectedMethod}
         />
 
         {/* Right Panel: Behavioral View */}
