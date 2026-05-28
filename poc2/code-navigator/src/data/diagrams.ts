@@ -215,6 +215,33 @@ export const classDiagram: Diagram = {
   },
 };
 
+// Layers Overview Diagram
+export const layersOverviewDiagram: DiagramData = {
+  title: 'Architecture Layers Overview',
+  description: 'High-level view of the 4-layer architecture with change summary',
+  mermaidCode: `flowchart TB
+    layer1[Layer 1: UI<br/>4 Components<br/>1 modified, 1 added]
+    layer2[Layer 2: Controllers<br/>8 Use Cases<br/>1 modified, 1 added]
+    layer3[Layer 3: Domain<br/>8 Classes<br/>1 modified]
+    layer4[Layer 4: Infrastructure<br/>4 Repositories<br/>1 modified]
+    
+    layer1 --> layer2
+    layer2 --> layer3
+    layer3 --> layer4
+    
+    style layer1 fill:#eab308,stroke:#ca8a04,stroke-width:4px
+    style layer2 fill:#eab308,stroke:#ca8a04,stroke-width:4px
+    style layer3 fill:#eab308,stroke:#ca8a04,stroke-width:4px
+    style layer4 fill:#eab308,stroke:#ca8a04,stroke-width:4px`,
+  elements: [],
+  changesSummary: {
+    added: 2,
+    modified: 4,
+    deleted: 0,
+    unchanged: 19,
+  },
+};
+
 // ============================================================================
 // Level 2: Deployment Diagram (UML)
 // ============================================================================

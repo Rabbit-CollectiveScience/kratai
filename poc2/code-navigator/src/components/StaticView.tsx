@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useCaseDiagram, deploymentDiagram, classDiagram } from '@/data/diagrams';
+import { useCaseDiagram, deploymentDiagram, layersOverviewDiagram, classDiagram } from '@/data/diagrams';
 
 interface StaticViewProps {
   selectedFile: string | null;
@@ -9,7 +9,7 @@ interface StaticViewProps {
 }
 
 export default function StaticView({ selectedFile, syncEnabled }: StaticViewProps) {
-  const [activeTab, setActiveTab] = useState<'usecase' | 'deployment' | 'class'>('usecase');
+  const [activeTab, setActiveTab] = useState<'usecase' | 'deployment' | 'layers' | 'class'>('usecase');
   const [mermaidRendered, setMermaidRendered] = useState(false);
   const [diagramKey, setDiagramKey] = useState(0);
 
@@ -60,14 +60,14 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
       }
     };
 
-    if (activeTab === 'usecase' || activeTab === 'deployment' || activeTab === 'class') {
+    if (activeTab === 'usecase' || activeTab === 'deployment' || activeTab === 'layers' || activeTab === 'class') {
       setMermaidRendered(false);
       setDiagramKey(prev => prev + 1); // Force remount
       setTimeout(renderMermaid, 150);
     }
   }, [activeTab]);
 
-  const diagram = activeTab === 'deployment' ? deploymentDiagram : activeTab === 'class' ? classDiagram : useCaseDiagram;
+  const diagram = activeTab === 'deployment' ? deploymentDiagram : activeTab === 'layers' ? layersOverviewDiagram : activeTab === 'class' ? classDiagram : useCaseDiagram;
   const { changesSummary } = diagram;
 
   return (
@@ -104,6 +104,16 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
             Deployment
           </button>
           <button
+            onClick={() => setActiveTab('layers')}
+            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+              activeTab === 'layers'
+                ? 'bg-slate-700/50 text-white'
+                : 'text-slate-400 hover:text-white hover:bg-slate-700/30'
+            }`}
+          >
+            Layers
+          </button>
+          <button
             onClick={() => setActiveTab('class')}
             className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
               activeTab === 'class'
@@ -117,7 +127,7 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
       </div>
 
       {/* Change Summary Bar */}
-      {(activeTab === 'usecase' || activeTab === 'deployment' || activeTab === 'class') && (
+      {(activeTab === 'usecase' || activeTab === 'deployment' || activeTab === 'layers' || activeTab === 'class') && (
         <div className="px-4 py-2 bg-slate-800/30 border-b border-slate-700 flex items-center justify-between">
           <div className="flex items-center gap-4 text-xs">
             <span className="text-slate-400">Changes:</span>
@@ -135,14 +145,14 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
             </div>
           </div>
           <div className="text-xs text-slate-500">
-            {changesSummary.added + changesSummary.modified + changesSummary.deleted} {activeTab === 'deployment' ? 'components' : activeTab === 'class' ? 'classes' : 'use cases'} affected
+            {changesSummary.added + changesSummary.modified + changesSummary.deleted} {activeTab === 'deployment' ? 'components' : activeTab === 'layers' ? 'layers' : activeTab === 'class' ? 'classes' : 'use cases'} affected
           </div>
         </div>
       )}
 
       {/* Main Diagram Area */}
       <div className="flex-1 overflow-auto">
-        {activeTab === 'usecase' || activeTab === 'deployment' || activeTab === 'class' ? (
+        {activeTab === 'usecase' || activeTab === 'deployment' || activeTab === 'layers' || activeTab === 'class' ? (
           <div className="w-full h-full p-6">
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-white mb-1">{diagram.title}</h3>
@@ -172,7 +182,22 @@ export default function StaticView({ selectedFile, syncEnabled }: StaticViewProp
             <div className="mt-6 p-4 bg-slate-800/30 rounded-lg">
               <h4 className="text-sm font-semibold text-white mb-3">Legend</h4>
               <div className="grid grid-cols-2 gap-3 text-xs">
-                {activeTab === 'class' ? (
+                {activeTab === 'layers' ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded bg-green-500"></div>
+                      <span className="text-slate-300">Added (New component)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded bg-yellow-500"></div>
+                      <span className="text-slate-300">Modified (Changed)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded bg-slate-400"></div>
+                      <span className="text-slate-300">Unchanged (Existing)</span>
+                    </div>
+                  </>
+                ) : activeTab === 'class' ? (
                   <>
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded bg-green-500"></div>
