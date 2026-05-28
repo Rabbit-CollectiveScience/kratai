@@ -61,14 +61,11 @@ export const classDiagram: Diagram = {
     ListAgentsUseCase ..> IAgentRepository
     ViewAnalyticsUseCase ..> SessionModel
     ViewAnalyticsUseCase ..> ISessionRepository
-    SignInWithGithubUseCase ..> UserModel
-    SignInWithGithubUseCase ..> IUserRepository
     
     IProjectRepository <|.. MongoProjectRepository
     ITaskRepository <|.. MongoTaskRepository
     IAgentRepository <|.. MongoAgentRepository
     ISessionRepository <|.. MongoSessionRepository
-    IUserRepository <|.. MongoUserRepository
     
     namespace Layer1_UI {
         class ProjectDashboard{
@@ -122,10 +119,6 @@ export const classDiagram: Diagram = {
             -sessionRepo
             +execute()
         }
-        class SignInWithGithubUseCase{
-            -userRepo
-            +execute()
-        }
     }
     
     namespace Layer3_Domain {
@@ -152,16 +145,6 @@ export const classDiagram: Diagram = {
             +taskId
             +status
         }
-        class UserModel{
-            +id
-            +email
-            +displayName
-        }
-        class ColumnModel{
-            +id
-            +name
-            +order
-        }
         class IProjectRepository{
             +create()*
             +findById()*
@@ -177,10 +160,6 @@ export const classDiagram: Diagram = {
         class ISessionRepository{
             +create()*
             +findByTask()*
-        }
-        class IUserRepository{
-            +create()*
-            +findById()*
         }
     }
     
@@ -199,10 +178,6 @@ export const classDiagram: Diagram = {
             +create()
         }
         class MongoSessionRepository{
-            -client
-            +create()
-        }
-        class MongoUserRepository{
             -client
             +create()
         }
@@ -236,7 +211,7 @@ export const classDiagram: Diagram = {
     added: 2,
     modified: 4,
     deleted: 0,
-    unchanged: 24,
+    unchanged: 19,
   },
 };
 
