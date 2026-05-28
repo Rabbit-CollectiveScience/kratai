@@ -133,34 +133,29 @@ export const classDiagram: Diagram = {
             +id
             +name
             +githubRepo
-            +columns
             +validate()
         }
         class TaskModel{
             +id
             +title
             +status
-            +assignedAgentId
             +validate()
         }
         class AgentModel{
             +id
             +name
             +avatar
-            +capabilities
             +validate()
         }
         class SessionModel{
             +id
             +taskId
             +status
-            +startedAt
         }
         class UserModel{
             +id
             +email
             +displayName
-            +githubToken
         }
         class ColumnModel{
             +id
@@ -170,16 +165,13 @@ export const classDiagram: Diagram = {
         class IProjectRepository{
             +create()*
             +findById()*
-            +update()*
         }
         class ITaskRepository{
             +create()*
             +findById()*
-            +update()*
         }
         class IAgentRepository{
             +create()*
-            +findById()*
             +findByProject()*
         }
         class ISessionRepository{
@@ -189,55 +181,39 @@ export const classDiagram: Diagram = {
         class IUserRepository{
             +create()*
             +findById()*
-            +findByEmail()*
         }
     }
     
     namespace Layer4_Infrastructure {
         class MongoProjectRepository{
             -client
-            -collection
             +create()
             +findById()
-            +update()
         }
         class MongoTaskRepository{
             -client
-            -collection
             +create()
-            +findById()
-            +update()
         }
         class MongoAgentRepository{
             -client
-            -collection
             +create()
-            +findByProject()
         }
         class MongoSessionRepository{
             -client
-            -collection
             +create()
-            +findByTask()
         }
         class MongoUserRepository{
             -client
-            -collection
             +create()
-            +findById()
-            +findByEmail()
         }
     }
     
     %% Styling
     class ProjectDashboard:::modified
     class AnalyticsDashboard:::added
-    
     class CreateProjectUseCase:::modified
     class ViewAnalyticsUseCase:::added
-    
     class ProjectModel:::modified
-    
     class MongoProjectRepository:::modified
     
     classDef added fill:#22c55e,stroke:#16a34a,stroke-width:4px
