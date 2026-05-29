@@ -39,10 +39,17 @@ export const sequenceDiagrams: Record<string, { title: string; description: stri
     participant Repo as IProjectRepository<br/>(Layer 3: Interface)
     participant Mongo as MongoProjectRepository<br/>(Layer 4: Infrastructure)
     participant DB as MongoDB
+    participant GitHub as GitHub API
 
     Note over UI: User clicks "Create Project"
     UI->>+UC: execute(projectData)
-    Note over UC: Validate input
+    
+    rect rgba(255, 193, 7, 0.2)
+        Note right of UC: MODIFIED: Enhanced validation
+        UC->>UC: validateInput()
+        UC->>UC: checkOwnerPermissions()
+    end
+    
     UC->>+Model: new ProjectModel(data)
     Model->>Model: validate()
     alt validation fails
@@ -50,9 +57,22 @@ export const sequenceDiagrams: Record<string, { title: string; description: stri
         UC-->>UI: Error response
     else validation succeeds
         Model-->>-UC: valid ProjectModel
+        
+        rect rgba(76, 175, 80, 0.2)
+            Note right of UC: NEW: GitHub integration
+            UC->>+GitHub: createRepository(name)
+            GitHub-->>-UC: { repoUrl, ... }
+            UC->>Model: setGitHubRepo(repoUrl)
+        end
+        
         UC->>+Repo: create(projectModel)
         Repo->>+Mongo: create(projectModel)
-        Mongo->>Mongo: toDocument()
+        
+        rect rgba(255, 193, 7, 0.2)
+            Note right of Mongo: MODIFIED: Added repo field
+            Mongo->>Mongo: toDocument()
+        end
+        
         Mongo->>+DB: insertOne(document)
         DB-->>-Mongo: { _id, ... }
         Mongo->>Mongo: toDomain(document)
@@ -75,21 +95,24 @@ export const sequenceDiagrams: Record<string, { title: string; description: stri
     participant Mongo as MongoSessionRepository<br/>(Layer 4)
     participant DB as MongoDB
 
-    UI->>UI: Component mount
-    UI->>+Hook: useEffect runs
-    Hook->>UI: setLoading(true)
-    Hook->>+UC: execute(projectId)
-    UC->>+Repo: findByProject(projectId)
-    Repo->>+Mongo: findByProject(projectId)
-    Mongo->>+DB: aggregate([...])
-    DB-->>-Mongo: session metrics
-    Mongo-->>-Repo: SessionModel[]
-    Repo-->>-UC: SessionModel[]
-    UC->>UC: computeMetrics(sessions)
-    UC-->>-Hook: AnalyticsMetrics
-    Hook->>UI: setMetrics(metrics)
-    UI->>UI: re-render with charts
-    Note over UI: Render metric cards + graphs`,
+    rect rgba(76, 175, 80, 0.2)
+        Note over UI,DB: NEW FEATURE: Analytics Dashboard
+        UI->>UI: Component mount
+        UI->>+Hook: useEffect runs
+        Hook->>UI: setLoading(true)
+        Hook->>+UC: execute(projectId)
+        UC->>+Repo: findByProject(projectId)
+        Repo->>+Mongo: findByProject(projectId)
+        Mongo->>+DB: aggregate([...])
+        DB-->>-Mongo: session metrics
+        Mongo-->>-Repo: SessionModel[]
+        Repo-->>-UC: SessionModel[]
+        UC->>UC: computeMetrics(sessions)
+        UC-->>-Hook: AnalyticsMetrics
+        Hook->>UI: setMetrics(metrics)
+        UI->>UI: re-render with charts
+        Note over UI: Render metric cards + graphs
+    end`,
   },
 
   'AnalyticsDashboard.fetchMetrics': {
@@ -128,13 +151,31 @@ export const sequenceDiagrams: Record<string, { title: string; description: stri
     participant Model as ProjectModel<br/>(Layer 3)
     participant Repo as IProjectRepository<br/>(Layer 3)
     participant Impl as MongoProjectRepository<br/>(Layer 4)
+    participant GitHub as GitHub API
 
     Caller->>+UC: execute(projectData)
-    Note over UC: Modified: now creates GitHub repo
+    
+    rect rgba(255, 193, 7, 0.2)
+        Note right of UC: MODIFIED: Enhanced validation
+        UC->>UC: validateInput()
+    end
+    
     UC->>+Model: new ProjectModel(data)
     Model->>Model: validate()
     Model-->>-UC: valid model
-    UC->>UC: createGitHubRepo(name)
+    
+    rect rgba(76, 175, 80, 0.2)
+        Note right of UC: NEW: GitHub repo creation
+        UC->>+GitHub: createRepository(name)
+        GitHub-->>-UC: { repoUrl }
+        UC->>Model: setGitHubRepo(repoUrl)
+    end
+    
+    rect rgba(244, 67, 54, 0.2)
+        Note right of UC: REMOVED: Old cache update
+        UC->>UC: ~~updateLocalCache()~~
+    end
+    
     UC->>+Repo: create(modelWithRepo)
     Repo->>+Impl: create(modelWithRepo)
     Impl-->>-Repo: persisted model
@@ -152,16 +193,19 @@ export const sequenceDiagrams: Record<string, { title: string; description: stri
     participant Repo as ISessionRepository<br/>(Layer 3)
     participant Impl as MongoSessionRepository<br/>(Layer 4)
 
-    Caller->>+UC: execute(projectId, dateRange?)
-    UC->>+Repo: findByProject(projectId, dateRange)
-    Repo->>+Impl: findByProject(...)
-    Impl-->>-Repo: SessionModel[]
-    Repo-->>-UC: SessionModel[]
-    UC->>UC: groupByDay(sessions)
-    UC->>UC: calculateSuccessRate()
-    UC->>UC: calculateAverageDuration()
-    UC->>UC: buildMetrics()
-    UC-->>-Caller: AnalyticsMetrics`,
+    rect rgba(76, 175, 80, 0.2)
+        Note over Caller,Impl: NEW FEATURE: Analytics Use Case
+        Caller->>+UC: execute(projectId, dateRange?)
+        UC->>+Repo: findByProject(projectId, dateRange)
+        Repo->>+Impl: findByProject(...)
+        Impl-->>-Repo: SessionModel[]
+        Repo-->>-UC: SessionModel[]
+        UC->>UC: groupByDay(sessions)
+        UC->>UC: calculateSuccessRate()
+        UC->>UC: calculateAverageDuration()
+        UC->>UC: buildMetrics()
+        UC-->>-Caller: AnalyticsMetrics
+    end`,
   },
 
   // ============ ProjectModel (Yellow / Modified) ============
@@ -174,7 +218,7 @@ export const sequenceDiagrams: Record<string, { title: string; description: stri
     participant Errors as ValidationErrors
 
     Caller->>+Model: validate()
-    Note over Model: Modified: added githubRepo validation
+    
     Model->>Model: check name not empty
     alt name invalid
         Model->>Errors: add("name required")
@@ -187,10 +231,15 @@ export const sequenceDiagrams: Record<string, { title: string; description: stri
     alt no owner
         Model->>Errors: add("owner required")
     end
-    Model->>Model: check githubRepo format
-    alt invalid repo url
-        Model->>Errors: add("invalid github url")
+    
+    rect rgba(255, 193, 7, 0.2)
+        Note right of Model: MODIFIED: New GitHub validation
+        Model->>Model: check githubRepo format
+        alt invalid repo url
+            Model->>Errors: add("invalid github url")
+        end
     end
+    
     alt has errors
         Model-->>Caller: throw ValidationError
     else valid
@@ -242,9 +291,13 @@ export const sequenceDiagrams: Record<string, { title: string; description: stri
     participant DB as MongoDB
 
     Caller->>+Repo: create(project: ProjectModel)
-    Note over Repo: Modified: includes githubRepo field
-    Repo->>+Mapper: toDocument(project)
-    Mapper-->>-Repo: ProjectDocument
+    
+    rect rgba(255, 193, 7, 0.2)
+        Note right of Repo: MODIFIED: Map githubRepo field
+        Repo->>+Mapper: toDocument(project)
+        Mapper-->>-Repo: ProjectDocument (with githubRepo)
+    end
+    
     Repo->>+Client: db.projects.insertOne(doc)
     Client->>+DB: INSERT
     DB-->>-Client: { insertedId }

@@ -46,9 +46,15 @@ const getCodeForMethod = (methodKey: string): string => {
     } else if (methodName === 'handleCreate') {
       return `async function handleCreate(projectData: CreateProjectInput) {
   try {
-    // Step 1: Validate input
+    // ━━━ MODIFIED: Enhanced validation ━━━
     if (!projectData.name || !projectData.ownerId) {
       throw new ValidationError('Missing required fields');
+    }
+    
+    // Validate owner permissions
+    const hasPermission = await checkOwnerPermissions(projectData.ownerId);
+    if (!hasPermission) {
+      throw new AuthorizationError('Insufficient permissions');
     }
     
     // Step 2: Create project model
@@ -62,9 +68,12 @@ const getCodeForMethod = (methodKey: string): string => {
     // Step 3: Validate model
     project.validate();
     
-    // Step 4: Create GitHub repository (new feature)
+    // ━━━ NEW: GitHub repository integration ━━━
     const githubRepo = await createGitHubRepo(projectData.name);
     project.githubRepo = githubRepo.url;
+    
+    // ━━━ REMOVED: No longer using local cache ━━━
+    // await updateLocalCache(project); // ❌ Deprecated
     
     // Step 5: Persist to database
     const useCase = new CreateProjectUseCase(projectRepository);
@@ -87,10 +96,13 @@ const getCodeForMethod = (methodKey: string): string => {
   async execute(projectData: ProjectInput): Promise<ProjectModel> {
     // Layer 2: Use Case / Controller logic
     
-    // Validate input
+    // ━━━ MODIFIED: Enhanced input validation ━━━
     if (!projectData.name) {
       throw new ValidationError('Project name is required');
     }
+    
+    // Check user permissions
+    await this.validateUserPermissions(projectData.ownerId);
     
     // Create domain model
     const project = new ProjectModel({
@@ -105,6 +117,19 @@ const getCodeForMethod = (methodKey: string): string => {
     
     // Validate domain rules
     project.validate();
+    
+    // ━━━ NEW: Create GitHub repository ━━━
+    if (projectData.createGitHubRepo) {
+      const githubClient = new GitHubClient();
+      const repo = await githubClient.createRepository({
+        name: projectData.name,
+        private: true
+      });
+      project.setGitHubRepo(repo.url);
+    }
+    
+    // ━━━ REMOVED: Local cache update ━━━
+    // await this.updateLocalCache(project); // ❌ No longer used
     
     // Persist via repository (Layer 3 -> Layer 4)
     const savedProject = await this.projectRepo.create(project);
@@ -281,18 +306,73 @@ export default function DynamicView({ selectedMethod, onMethodSelect }: DynamicV
                     justifyContent: 'center',
                   }}
                 />
+                
+                {/* Legend for color coding */}
+                <div className="mt-6 p-4 bg-slate-800/50 rounded-lg">
+                  <h4 className="text-xs font-semibold text-white mb-3">Change Indicators</h4>
+                  <div className="grid grid-cols-3 gap-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(76, 175, 80, 0.5)' }}></div>
+                      <span className="text-slate-300">Added (New)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(255, 193, 7, 0.5)' }}></div>
+                      <span className="text-slate-300">Modified</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: 'rgba(244, 67, 54, 0.5)' }}></div>
+                      <span className="text-slate-300">Removed</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="relative bg-slate-800/30 rounded-lg p-6">
                 <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm overflow-auto max-h-[calc(100vh-300px)]">
-                  <pre className="text-green-400 whitespace-pre-wrap">
-                    {getCodeForMethod(selectedMethod)}
+                  <pre className="text-slate-300 whitespace-pre-wrap">
+                    {getCodeForMethod(selectedMethod)
+                      .split('\n')
+                      .map((line, i) => {
+                        // Color code the special comment markers
+                        if (line.includes('━━━ NEW:')) {
+                          return <div key={i} className="text-green-400 font-semibold">{line}</div>;
+                        } else if (line.includes('━━━ MODIFIED:')) {
+                          return <div key={i} className="text-yellow-400 font-semibold">{line}</div>;
+                        } else if (line.includes('━━━ REMOVED:')) {
+                          return <div key={i} className="text-red-400 font-semibold">{line}</div>;
+                        } else if (line.includes('// ❌')) {
+                          return <div key={i} className="text-red-400/50 line-through">{line}</div>;
+                        } else if (line.trim().startsWith('//')) {
+                          return <div key={i} className="text-slate-500">{line}</div>;
+                        } else {
+                          return <div key={i} className="text-slate-300">{line}</div>;
+                        }
+                      })}
                   </pre>
                 </div>
-                <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                  <p className="text-xs text-blue-300">
-                    💡 <strong>Note:</strong> This is example code showing typical implementation patterns for this method.
-                  </p>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-slate-800/50 rounded-lg">
+                    <h5 className="text-xs font-semibold text-white mb-2">Change Indicators</h5>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded bg-green-400"></div>
+                        <span className="text-slate-400">NEW - Added code</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded bg-yellow-400"></div>
+                        <span className="text-slate-400">MODIFIED - Changed code</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded bg-red-400"></div>
+                        <span className="text-slate-400">REMOVED - Deleted code</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                    <p className="text-xs text-blue-300">
+                      💡 <strong>Note:</strong> This is example code showing typical implementation patterns for this method.
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
