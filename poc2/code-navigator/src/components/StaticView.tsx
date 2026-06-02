@@ -365,6 +365,17 @@ Ensure dependency rules are maintained (Layer N depends only on Layer N+1).
 *Version: 1.0*
 `;
 
+// Map use case names to sequence diagram keys
+const useCaseToSequenceDiagram: Record<string, string> = {
+  'Create Project': 'ProjectDashboard.handleCreate',
+  'View Analytics': 'AnalyticsDashboard.render',
+  'Create Task': 'CreateProjectUseCase.execute', // Generic task creation flow
+  'Create AI Agent': 'CreateProjectUseCase.execute', // Similar creation pattern
+  'Monitor Agent Progress': 'AnalyticsDashboard.fetchMetrics', // Similar monitoring
+  'Execute Task Autonomously': 'ViewAnalyticsUseCase.execute', // Generic execution flow
+  'Review AI Changes': 'ProjectModel.validate', // Validation flow
+};
+
 // Helper: find the class name for a clicked method element by walking up the SVG DOM
 function findClassForMethodElement(methodEl: Element): string | null {
   // Walk up to find the nearest <g> node group that represents a class
@@ -627,6 +638,72 @@ export default function StaticView({ selectedFile, syncEnabled, onFileSelect, on
     const interval = setInterval(() => applyStyling(1), 2000);
     return () => clearInterval(interval);
   }, [mermaidRendered, activeTab, selectedFile]);
+
+  // Handle use case clicks in use case diagram
+  useEffect(() => {
+    if (activeTab !== 'usecase' || !onMethodSelect) return;
+    
+    const container = diagramContainerRef.current;
+    if (!container) return;
+
+    const handleUseCaseClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target) return;
+      
+      const text = target.textContent?.trim() || '';
+      
+      // Check if this is a use case box (contains use case text)
+      // Use case boxes typically have specific text patterns
+      const sequenceKey = useCaseToSequenceDiagram[text];
+      
+      if (sequenceKey && sequenceDiagrams[sequenceKey]) {
+        e.stopPropagation();
+        e.preventDefault();
+        console.log('Use case clicked:', text, '→', sequenceKey);
+        onMethodSelect(sequenceKey);
+      }
+    };
+
+    container.addEventListener('click', handleUseCaseClick);
+    return () => container.removeEventListener('click', handleUseCaseClick);
+  }, [activeTab, onMethodSelect, mermaidRendered]);
+
+  // Apply visual styling to clickable use cases
+  useEffect(() => {
+    if (activeTab !== 'usecase' || !mermaidRendered || !diagramContainerRef.current) return;
+
+    const applyUseCaseStyling = (attempt = 1) => {
+      const svgElement = diagramContainerRef.current?.querySelector('svg');
+      if (!svgElement) {
+        if (attempt < 10) setTimeout(() => applyUseCaseStyling(attempt + 1), 300);
+        return;
+      }
+
+      const textElements = svgElement.querySelectorAll('p, span, text, div');
+      if (textElements.length === 0 && attempt < 10) {
+        setTimeout(() => applyUseCaseStyling(attempt + 1), 300);
+        return;
+      }
+
+      textElements.forEach((el) => {
+        const text = el.textContent?.trim() || '';
+        
+        // Check if this text matches a use case
+        if (useCaseToSequenceDiagram[text]) {
+          const htmlEl = el as HTMLElement;
+          htmlEl.style.cursor = 'pointer';
+          htmlEl.style.color = '#2563eb';
+          htmlEl.style.textDecoration = 'underline';
+          htmlEl.style.fontWeight = '600';
+          htmlEl.setAttribute('data-usecase-clickable', text);
+        }
+      });
+    };
+
+    setTimeout(() => applyUseCaseStyling(1), 500);
+    const interval = setInterval(() => applyUseCaseStyling(1), 2000);
+    return () => clearInterval(interval);
+  }, [mermaidRendered, activeTab]);
 
   const { changesSummary } = diagram;
 
@@ -942,6 +1019,16 @@ export default function StaticView({ selectedFile, syncEnabled, onFileSelect, on
                       <div className="w-4 h-4 rounded bg-blue-500"></div>
                       <span className="text-slate-300">Actor (User/System)</span>
                     </div>
+                    {activeTab === 'usecase' && (
+                      <div className="col-span-2 mt-2 pt-2 border-t border-slate-700">
+                        <p className="text-xs text-blue-300 flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                          <span className="font-semibold">Tip:</span> Click on <span className="underline">blue underlined use cases</span> to view their sequence diagrams in the Behavioral View
+                        </p>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
