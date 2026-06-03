@@ -120,10 +120,9 @@ export class ClassDiagramView {
 					top: ${pos.y}px;
 					width: ${pos.width}px;
 					height: ${pos.height}px;
-					background: rgba(255, 255, 255, ${opacity});
-					border: 2px solid rgba(102, 126, 234, ${borderOpacity});
+					background: rgba(255, 255, 255, ${opacity + 0.03});
+					border: 2px solid rgba(102, 126, 234, ${borderOpacity + 0.1});
 					border-radius: 6px;
-					backdrop-filter: blur(3px);
 					z-index: ${10 - depth};
 				">
 					<div style="
@@ -258,9 +257,11 @@ export class ClassDiagramView {
 			const targetX = targetPos.x + boxWidth / 2;
 			const targetY = targetPos.y + boxHeight / 2;
 
-			const color = edge.type === 'extends' ? '#ff6b6b' : edge.type === 'implements' ? '#4ecdc4' : '#999';
-			const dashArray = edge.type === 'implements' ? '4,4' : '0';
-			const markerEnd = edge.type === 'implements' ? 'url(#triangle-implements)' : 'url(#triangle-extends)';
+			const color = edge.type === 'extends' ? '#ff6b6b' : edge.type === 'implements' ? '#4ecdc4' : edge.type === 'uses' ? '#999999' : '#999';
+			const dashArray = edge.type === 'implements' ? '4,4' : edge.type === 'uses' ? '2,2' : '0';
+			const markerEnd = edge.type === 'implements' ? 'url(#triangle-implements)' : edge.type === 'uses' ? 'url(#arrow-uses)' : 'url(#triangle-extends)';
+			const strokeWidth = edge.type === 'uses' ? '1.5' : '2.5';
+			const opacity = edge.type === 'uses' ? '0.5' : '0.9';
 			
 			// Draw curved line for better visibility
 			const midX = (sourceX + targetX) / 2;
@@ -276,11 +277,11 @@ export class ClassDiagramView {
 				<path 
 					d="M ${sourceX},${sourceY} Q ${controlX},${controlY} ${targetX},${targetY}"
 					stroke="${color}"
-					stroke-width="1.5"
+					stroke-width="${strokeWidth}"
 					fill="none"
 					stroke-dasharray="${dashArray}"
 					marker-end="${markerEnd}"
-					opacity="0.7"
+					opacity="${opacity}"
 				/>
 			`;
 		}).join('');
@@ -447,6 +448,10 @@ export class ClassDiagramView {
             <div class="legend-line" style="background: #4ecdc4; border-bottom: 2px dashed #4ecdc4;"></div>
             <span>Implements</span>
         </div>
+        <div class="legend-item">
+            <div class="legend-line" style="background: #999; border-bottom: 1px dotted #999;"></div>
+            <span>Uses</span>
+        </div>
     </div>
     
     <div style="overflow: auto; height: calc(100vh - 100px); background: rgba(255,255,255,0.05);" id="diagram-scroll">
@@ -458,6 +463,9 @@ export class ClassDiagramView {
                     </marker>
                     <marker id="triangle-implements" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
                         <polygon points="0,0 0,8 8,4" fill="#4ecdc4" />
+                    </marker>
+                    <marker id="arrow-uses" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                        <path d="M 0,0 L 8,4 L 0,8" fill="none" stroke="#999999" stroke-width="1.5" />
                     </marker>
                 </defs>
                 ${svgLines}

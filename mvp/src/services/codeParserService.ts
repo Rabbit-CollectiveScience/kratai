@@ -23,6 +23,8 @@ export class CodeParserService {
 		}
 
 		// Extract relationships
+		const classNames = new Set(classes.map(c => c.name));
+		
 		for (const classInfo of classes) {
 			if (classInfo.extends) {
 				relationships.push({
@@ -41,6 +43,53 @@ export class CodeParserService {
 					});
 				}
 			}
+
+			// Extract dependencies from properties
+			const dependencies = new Set<string>();
+			
+			for (const prop of classInfo.properties) {
+				const types = this.extractTypeNames(prop.type);
+				types.forEach(type => {
+					if (classNames.has(type) && type !== classInfo.name) {
+						dependencies.add(type);
+					}
+				});
+			}
+
+			// Extract dependencies from method parameters and return types
+			for (const method of classInfo.methods) {
+				for (const param of method.parameters) {
+					const types = this.extractTypeNames(param.type);
+					types.forEach(type => {
+						if (classNames.has(type) && type !== classInfo.name) {
+							dependencies.add(type);
+						}
+					});
+				}
+				
+				const returnTypes = this.extractTypeNames(method.returnType);
+				returnTypes.forEach(type => {
+					if (classNames.has(type) && type !== classInfo.name) {
+						dependencies.add(type);
+					}
+				});
+			}
+
+			// Add 'uses' relationships for dependencies
+			dependencies.forEach(dep => {
+				// Don't add 'uses' if there's already an 'extends' or 'implements' relationship
+				const hasStrongerRelationship = relationships.some(
+					r => r.from === classInfo.name && r.to === dep && (r.type === 'extends' || r.type === 'implements')
+				);
+				
+				if (!hasStrongerRelationship) {
+					relationships.push({
+						from: classInfo.name,
+						to: dep,
+						type: 'uses'
+					});
+				}
+			});
 		}
 
 		return { classes, relationships };
@@ -91,6 +140,28 @@ export class CodeParserService {
 
 		visit(sourceFile);
 		return classes;
+	}
+
+	private static extractTypeNames(typeString: string): string[] {
+		// Extract class names from type strings
+		// Handle cases like: "MyClass", "MyClass[]", "MyClass | null", "Array<MyClass>", etc.
+		const types: string[] = [];
+		
+		// Remove common non-class type keywords
+		const nonClassTypes = new Set(['string', 'number', 'boolean', 'void', 'any', 'unknown', 'never', 'null', 'undefined', 'Promise', 'Array', 'Map', 'Set']);
+		
+		// Extract identifiers (words that start with uppercase letter)
+		const identifierRegex = /\b([A-Z][a-zA-Z0-9]*)\b/g;
+		let match;
+		
+		while ((match = identifierRegex.exec(typeString)) !== null) {
+			const typeName = match[1];
+			if (!nonClassTypes.has(typeName)) {
+				types.push(typeName);
+			}
+		}
+		
+		return types;
 	}
 
 	private static extractClassInfo(node: ts.ClassDeclaration, filePath: string): ClassInfo {
