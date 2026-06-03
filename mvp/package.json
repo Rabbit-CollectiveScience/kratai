@@ -16,6 +16,10 @@
       {
         "command": "kratai.showFileSummary",
         "title": "Kratai: Show Git Changes"
+      },
+      {
+        "command": "kratai.generateClassDiagram",
+        "title": "Kratai: Generate Class Diagram"
       }
     ]
   },
