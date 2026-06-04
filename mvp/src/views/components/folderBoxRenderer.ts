@@ -11,6 +11,17 @@ export class FolderBoxRenderer {
 		return html;
 	}
 
+	private escapeHtml(text: string): string {
+		// Escape HTML special characters in folder/file names
+		// Handles: angle brackets, quotes, ampersands, and control characters
+		return text
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#039;');
+	}
+
 	private renderFolder(
 		folder: FolderNode,
 		icon: string,
@@ -24,8 +35,12 @@ export class FolderBoxRenderer {
 			? childFolders.map(child => this.renderAll(child, depth + 1)).join('\n')
 			: '';
 		
+		// Escape folder name and path for safe HTML rendering
+		const safeFolderName = this.escapeHtml(folder.name);
+		const safeFolderPath = this.escapeHtml(folder.fullPath);
+		
 		return `
-			<div class="folder-container" data-folder="${folder.fullPath}" data-depth="${depth}" style="
+			<div class="folder-container" data-folder="${safeFolderPath}" data-depth="${depth}" style="
 				margin: ${depth === 0 ? '20px' : '10px'};
 				border: 2px solid #333;
 				background: #fafafa;
@@ -43,7 +58,7 @@ export class FolderBoxRenderer {
 					gap: 6px;
 				">
 					<span>${icon}</span>
-					<span>${folder.name}</span>
+					<span>${safeFolderName}</span>
 					${totalCount > 0 ? `<span style="
 						background: #999;
 						padding: 2px 6px;
@@ -55,7 +70,7 @@ export class FolderBoxRenderer {
 				
 				<!-- Folder Content: Classes in CSS Grid -->
 				${folder.classes.length > 0 ? `
-				<div class="classes-grid" data-folder-classes="${folder.fullPath}" style="
+				<div class="classes-grid" data-folder-classes="${safeFolderPath}" style="
 					display: grid;
 					grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
 					gap: 20px;
@@ -70,7 +85,7 @@ export class FolderBoxRenderer {
 				
 				<!-- Child Folders -->
 				${childFoldersHTML ? `
-				<div class="child-folders" data-parent="${folder.fullPath}" style="
+				<div class="child-folders" data-parent="${safeFolderPath}" style="
 					display: flex;
 					flex-direction: column;
 					gap: 10px;

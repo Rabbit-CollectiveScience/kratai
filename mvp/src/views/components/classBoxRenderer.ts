@@ -35,12 +35,18 @@ export class ClassBoxRenderer {
 	}
 	
 	private escapeHtml(text: string): string {
+		// Escape HTML special characters to prevent breaking HTML structure
+		// Critical for: generics (Array<T>), templates (vector<string>), 
+		// type annotations (Dict[str, int]), and special operators (&, |, etc.)
 		return text
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;')
-			.replace(/"/g, '&quot;')
-			.replace(/'/g, '&#039;');
+			.replace(/&/g, '&amp;')   // Must be first to avoid double-escaping
+			.replace(/</g, '&lt;')    // Generics: Array<T>, Promise<void>, List<String>
+			.replace(/>/g, '&gt;')    // Templates: vector<int>, map<K,V>
+			.replace(/"/g, '&quot;')  // Prevent attribute breaking
+			.replace(/'/g, '&#039;')  // Prevent single-quote issues
+			.replace(/\n/g, ' ')      // Multi-line types to single line
+			.replace(/\t/g, ' ')      // Tabs to spaces
+			.replace(/\s+/g, ' ');    // Collapse multiple spaces
 	}
 
 	private renderHeader(classInfo: ClassInfo, isModule: boolean, displayName: string): string {
