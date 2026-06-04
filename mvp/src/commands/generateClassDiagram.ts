@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { CodeParserService } from '../services/codeParserService';
 import { DiagramGeneratorService } from '../services/diagramGeneratorService';
 import { ClassDiagramView } from '../views/classDiagramView';
+import { ConfigService } from '../services/configService';
 
 export async function generateClassDiagram(context: vscode.ExtensionContext): Promise<void> {
 	// Check if workspace is opened
@@ -15,6 +16,12 @@ export async function generateClassDiagram(context: vscode.ExtensionContext): Pr
 	const workspaceName = workspaceFolder.name;
 
 	try {
+		// Load config and show info
+		const config = await ConfigService.loadConfig(workspacePath);
+		const configInfo = ConfigService.getProjectInfo(config);
+		
+		console.log('🔍 Kratai Config:', configInfo);
+
 		await vscode.window.withProgress({
 			location: vscode.ProgressLocation.Notification,
 			title: "Generating class diagram...",

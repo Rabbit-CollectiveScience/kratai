@@ -15,11 +15,97 @@ export class ConfigService {
 		};
 	}
 
+	static generateSmartDefaults(workspacePath: string): KrataiConfig {
+		// Common folder patterns for different project types
+		const commonSourceFolders = [
+			'src',
+			'lib',
+			'app',
+			'packages',
+			'server',
+			'client',
+			'api',
+			'services',
+			'components',
+			'modules',
+			'core'
+		];
+
+		const detectedFolders: string[] = [];
+
+		// Check which common folders exist
+		for (const folderName of commonSourceFolders) {
+			const folderPath = path.join(workspacePath, folderName);
+			if (fs.existsSync(folderPath) && fs.statSync(folderPath).isDirectory()) {
+				detectedFolders.push(folderName);
+			}
+		}
+
+		// If no common folders found, default to empty (scan all)
+		const selectedFolders = detectedFolders.length > 0 ? detectedFolders : [];
+
+		// Detect file types in the project
+		const extensions = this.detectFileExtensions(workspacePath);
+
+		return {
+			selectedFolders,
+			selectedExtensions: extensions,
+			respectGitignore: true,
+			followSymlinks: false
+		};
+	}
+
+	private static detectFileExtensions(workspacePath: string): string[] {
+		// Default to TypeScript
+		let detectedExtensions = ['.ts', '.tsx'];
+
+		// Check for package.json to detect project type
+		const packageJsonPath = path.join(workspacePath, 'package.json');
+		if (fs.existsSync(packageJsonPath)) {
+			try {
+				const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+				const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
+
+				// Check for TypeScript
+				const hasTypeScript = deps['typescript'] || deps['@types/node'];
+				// Check for JavaScript frameworks
+				const hasReact = deps['react'];
+				const hasVue = deps['vue'];
+				
+				if (hasTypeScript) {
+					detectedExtensions = hasReact ? ['.ts', '.tsx'] : ['.ts'];
+				} else {
+					detectedExtensions = hasReact ? ['.js', '.jsx'] : ['.js'];
+				}
+
+				// Add .vue if Vue detected
+				if (hasVue) {
+					detectedExtensions.push('.vue');
+				}
+			} catch (error) {
+				// Fallback to defaults
+			}
+		}
+
+		return detectedExtensions;
+	}
+
+	static getProjectInfo(config: KrataiConfig): string {
+		if (config.selectedFolders.length === 0) {
+			return '📂 Scanning all folders (except node_modules, dist, build, out, .git)';
+		}
+
+		const folderList = config.selectedFolders.join(', ');
+		const extList = config.selectedExtensions.join(', ');
+		return `📂 Folders: ${folderList}\n📄 Extensions: ${extList}`;
+	}
+
 	static async loadConfig(workspacePath: string): Promise<KrataiConfig> {
 		const configPath = path.join(workspacePath, this.CONFIG_FILE);
 		
 		if (!fs.existsSync(configPath)) {
-			return this.getDefaultConfig();
+			// No config file exists - generate smart defaults
+			return this.generateSmartDefaults(workspacePath);
 		}
 
 		try {
@@ -33,7 +119,7 @@ export class ConfigService {
 			};
 		} catch (error) {
 			console.error('Error loading Kratai config:', error);
-			return this.getDefaultConfig();
+			return this.generateSmartDefaults(workspacePath);
 		}
 	}
 
