@@ -39,6 +39,21 @@ export async function generateClassDiagram(context: vscode.ExtensionContext): Pr
 				}
 			});
 
+			// Deduplicate classes (config with overlapping folder paths causes duplicates)
+			const originalCount = diagramData.classes.length;
+			const classMap = new Map<string, typeof diagramData.classes[0]>();
+			diagramData.classes.forEach(classInfo => {
+				const key = `${classInfo.filePath}:${classInfo.name}`;
+				if (!classMap.has(key)) {
+					classMap.set(key, classInfo);
+				}
+			});
+			diagramData.classes = Array.from(classMap.values());
+			
+			if (originalCount > diagramData.classes.length) {
+				console.log(`🔧 Deduplicated: ${originalCount} → ${diagramData.classes.length} classes (removed ${originalCount - diagramData.classes.length} duplicates)`);
+			}
+
 			if (diagramData.classes.length === 0) {
 				vscode.window.showWarningMessage('No classes found in src folder!');
 				return;

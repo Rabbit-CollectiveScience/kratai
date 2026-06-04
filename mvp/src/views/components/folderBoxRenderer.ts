@@ -20,7 +20,7 @@ export class FolderBoxRenderer {
 		const childFolders = Array.from(folder.children.values()).sort((a, b) => a.name.localeCompare(b.name));
 		
 		return `
-			<div class="folder-container" style="
+			<div class="folder-container" data-folder="${folder.fullPath}" data-depth="${depth}" style="
 				margin: ${depth === 0 ? '20px' : '10px'};
 				border: 2px solid #333;
 				background: #fafafa;
@@ -50,7 +50,7 @@ export class FolderBoxRenderer {
 				
 				<!-- Folder Content: Classes in CSS Grid -->
 				${folder.classes.length > 0 ? `
-				<div class="classes-grid" style="
+				<div class="classes-grid" data-folder-classes="${folder.fullPath}" style="
 					display: grid;
 					grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
 					gap: 20px;
@@ -65,7 +65,7 @@ export class FolderBoxRenderer {
 				
 				<!-- Child Folders -->
 				${childFolders.length > 0 ? `
-				<div class="child-folders" style="
+				<div class="child-folders" data-parent="${folder.fullPath}" style="
 					display: flex;
 					flex-direction: column;
 					gap: 10px;

@@ -90,10 +90,16 @@ export class FolderStructureBuilder {
 	}
 
 	static logStructure(folder: FolderNode, indent = ''): void {
-		console.log(`${indent}📁 ${folder.name} (${folder.classes.length} classes)`);
+		console.log(`${indent}📁 ${folder.name} (${folder.classes.length} classes) [fullPath: ${folder.fullPath}]`);
 		folder.classes.forEach(node => {
-			console.log(`${indent}  └─ ${node.data.classInfo.name}`);
+			console.log(`${indent}  └─ ${node.data.classInfo.name} @ ${node.data.classInfo.filePath}`);
 		});
+		
+		// Show children count
+		if (folder.children.size > 0) {
+			console.log(`${indent}  Children: ${Array.from(folder.children.keys()).join(', ')}`);
+		}
+		
 		folder.children.forEach(child => this.logStructure(child, indent + '  '));
 	}
 
