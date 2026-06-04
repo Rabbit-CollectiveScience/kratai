@@ -372,6 +372,9 @@ export class ClassDiagramView {
         function resetZoom() {
             currentZoom = 1;
             applyZoom();
+            
+            // Recalculate and resize root folder on reset
+            expandRootFolder();
         }
         
         function applyZoom() {
@@ -407,12 +410,56 @@ export class ClassDiagramView {
             }
         }
         
+        // Make root folder expand to viewport width
+        function expandRootFolder() {
+            const scrollContainer = document.getElementById('diagram-scroll');
+            const viewportWidth = scrollContainer.clientWidth;
+            
+            console.log('📐 Viewport width:', viewportWidth + 'px');
+            
+            // Find all folder elements (both tab and body)
+            const allElements = document.querySelectorAll('.folder-box, [style*="position: absolute"]');
+            
+            // Find the root folder (leftmost at x=40)
+            let rootFolderBody = null;
+            let rootFolderTab = null;
+            
+            allElements.forEach(el => {
+                const left = parseInt(el.style.left);
+                const top = parseInt(el.style.top);
+                
+                // Root folder tab is at y=12 (40-28), root body is at y=40
+                if (left === 40 && top === 12) {
+                    rootFolderTab = el;
+                } else if (left === 40 && top === 40) {
+                    rootFolderBody = el;
+                }
+            });
+            
+            // Expand root folder and SVG to viewport width
+            if (rootFolderBody) {
+                const newWidth = viewportWidth - 80; // 40px margin on each side
+                rootFolderBody.style.width = newWidth + 'px';
+                
+                // Also expand SVG
+                const svg = document.querySelector('svg');
+                if (svg) {
+                    svg.setAttribute('width', viewportWidth.toString());
+                }
+                
+                console.log('✅ Expanded src folder to:', newWidth + 'px');
+            }
+        }
+        
         // Log debug info on load
         window.addEventListener('load', function() {
             console.log('=== Class Diagram Debug Info ===');
             console.log('Total classes:', document.querySelectorAll('.uml-box').length);
             console.log('Total folders:', document.querySelectorAll('.folder-box').length);
             console.log('Canvas size:', '${maxX}x${maxY}');
+            
+            // Set root folder width once on load
+            expandRootFolder();
             
             document.querySelectorAll('.uml-box').forEach((box, idx) => {
                 const className = box.getAttribute('data-class');
