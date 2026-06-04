@@ -59,8 +59,8 @@ export class FolderStructureBuilder {
 			unmatchedFiles.slice(0, 10).forEach(f => console.warn(`   ${f}`));
 		}
 
-		// Collapse pass-through folders (folders with no classes and only one child)
-		this.collapsePassThroughFolders(root);
+		// Collapse pass-through folders - DISABLED (causes structure corruption)
+		// this.collapsePassThroughFolders(root);
 
 		return root;
 	}
