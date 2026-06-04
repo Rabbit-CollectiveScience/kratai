@@ -33,8 +33,10 @@ export class FolderBoxRenderer {
 		totalCount: number,
 		depth: number
 	): string {
+		const folderId = folder.fullPath.replace(/\//g, '-').replace(/[()]/g, '');
+		
 		return `
-			<div class="folder-box" style="
+			<div class="folder-box" data-folder-id="${folderId}" data-folder-path="${folder.fullPath}" data-original-height="${pos.height}" style="
 				position: absolute;
 				left: ${pos.x}px;
 				top: ${pos.y}px;
@@ -47,7 +49,7 @@ export class FolderBoxRenderer {
 				pointer-events: none;
 				box-sizing: border-box;
 			">
-				<div style="
+				<div class="folder-header" onclick="toggleFolder('${folderId}')" style="
 					padding: 10px 14px;
 					background: linear-gradient(135deg, rgba(102, 126, 234, ${0.2 + depth * 0.03}), rgba(118, 75, 162, ${0.2 + depth * 0.03}));
 					border-radius: 6px 6px 0 0;
@@ -58,7 +60,10 @@ export class FolderBoxRenderer {
 					align-items: center;
 					gap: 6px;
 					pointer-events: auto;
+					cursor: pointer;
+					user-select: none;
 				">
+					<span class="collapse-icon" id="collapse-${folderId}" style="font-size: 0.9em; transition: transform 0.2s;">▼</span>
 					<span style="font-size: 1.1em;">${icon}</span>
 					<span>${folder.name}</span>
 					${totalCount > 0 ? `<span style="

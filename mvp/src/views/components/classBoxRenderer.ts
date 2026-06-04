@@ -12,9 +12,12 @@ export class ClassBoxRenderer {
 							classInfo.isAbstract ? '#ff6b6b' : '#667eea';
 		const borderStyle = isModule ? 'solid' : classInfo.isInterface ? 'dashed' : 'solid';
 		const displayName = isModule ? className.slice(1, -1) : className;
+		
+		// Extract folder path from file path for collapse functionality
+		const folderPath = classInfo.filePath.substring(0, classInfo.filePath.lastIndexOf('/'));
 
 		return `
-			<div class="uml-box" data-class="${className}" style="
+			<div class="uml-box" data-class="${className}" data-folder-path="${folderPath}" style="
 				position: absolute;
 				left: ${pos.x}px;
 				top: ${pos.y}px;
@@ -28,6 +31,7 @@ export class ClassBoxRenderer {
 				z-index: 100;
 				pointer-events: auto;
 				box-sizing: border-box;
+				transition: opacity 0.2s, transform 0.2s;
 			">
 				${this.renderHeader(classInfo, isModule, displayName, borderColor)}
 				${this.renderProperties(classInfo, isModule, borderColor)}
