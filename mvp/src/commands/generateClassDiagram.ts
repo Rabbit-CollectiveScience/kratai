@@ -24,6 +24,14 @@ export async function generateClassDiagram(context: vscode.ExtensionContext): Pr
 			progress.report({ message: 'Analyzing code...' });
 			const diagramData = await CodeParserService.parseWorkspace(workspacePath);
 
+			// Normalize file paths to workspace-relative (fixes path mismatch bugs)
+			diagramData.classes.forEach(classInfo => {
+				if (classInfo.filePath.includes(workspacePath)) {
+					// Convert absolute to relative
+					classInfo.filePath = classInfo.filePath.substring(workspacePath.length + 1);
+				}
+			});
+
 			if (diagramData.classes.length === 0) {
 				vscode.window.showWarningMessage('No classes found in src folder!');
 				return;

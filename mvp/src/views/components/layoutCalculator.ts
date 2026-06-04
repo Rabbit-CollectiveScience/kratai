@@ -41,12 +41,13 @@ export class HierarchicalLayoutCalculator {
 				const classX = currentX + col * (this.config.boxWidth + this.config.classSpacing);
 				const classY = contentY + row * (this.config.boxHeight + this.config.classSpacing);
 				
-				// Store position with class name
-				const className = node.data.classInfo.name;
-				this.classPositions.set(className, { x: classX, y: classY });
+				// Store position with COMPOSITE KEY (filePath:className) for uniqueness
+				// Many files have multiple classes (e.g., types.ts with 15 types)
+				const uniqueKey = `${node.data.classInfo.filePath}:${node.data.classInfo.name}`;
+				this.classPositions.set(uniqueKey, { x: classX, y: classY });
 				
-				// Debug log
-				console.log(`Positioned ${className} at (${classX}, ${classY}) in folder ${folder.fullPath}`);
+				// Debug log - show both name and path
+				console.log(`Positioned ${node.data.classInfo.name} at (${classX}, ${classY}) in folder ${folder.fullPath} [${uniqueKey}]`);
 			});
 			
 			const classRows = Math.ceil(folder.classes.length / nodesPerRow);
@@ -76,8 +77,17 @@ export class HierarchicalLayoutCalculator {
 		return { width: totalWidth, height: totalHeight };
 	}
 
-	getClassPosition(className: string): Position | undefined {
-		return this.classPositions.get(className);
+	getClassPosition(filePath: string, className: string): Position | undefined {
+		const key = `${filePath}:${className}`;
+		return this.classPositions.get(key);
+	}
+	
+	getStoredPositionsCount(): number {
+		return this.classPositions.size;
+	}
+	
+	getAllStoredPaths(): string[] {
+		return Array.from(this.classPositions.keys());
 	}
 
 	getFolderSize(folderPath: string): FolderSize | undefined {

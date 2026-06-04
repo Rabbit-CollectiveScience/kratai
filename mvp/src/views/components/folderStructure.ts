@@ -16,8 +16,12 @@ export class FolderStructureBuilder {
 			classes: [] 
 		};
 
+		const unmatchedFiles: string[] = [];
+		
 		nodes.forEach(node => {
 			const filePath = node.data.classInfo.filePath;
+			const className = node.data.classInfo.name;
+			
 			// Match any file under src/, extracting the folder path
 			const match = filePath.match(/src\/(.+)\/[^\/]+\.tsx?$/);
 			
@@ -43,10 +47,17 @@ export class FolderStructureBuilder {
 				
 				current.classes.push(node);
 			} else {
-				// File is directly in src/ (no subfolder)
+				// File is directly in src/ (no subfolder) OR doesn't match pattern
+				console.warn(`⚠️ ${className}: Path "${filePath}" didn't match /src\\/(.+)\\/[^\\/]+\\.tsx?$/ - adding to root`);
+				unmatchedFiles.push(`${className} @ ${filePath}`);
 				root.classes.push(node);
 			}
 		});
+
+		if (unmatchedFiles.length > 0) {
+			console.warn(`\n❌ ${unmatchedFiles.length} files didn't match folder pattern:`);
+			unmatchedFiles.slice(0, 10).forEach(f => console.warn(`   ${f}`));
+		}
 
 		return root;
 	}
