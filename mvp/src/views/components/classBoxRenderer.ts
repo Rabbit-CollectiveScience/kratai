@@ -4,7 +4,7 @@ import { Position } from './layoutCalculator';
 export class ClassBoxRenderer {
 	constructor(private boxWidth: number) {}
 
-	render(classInfo: ClassInfo, pos: Position): string {
+	render(classInfo: ClassInfo, pos?: Position): string {
 		const className = classInfo.name;
 		const isModule = className.startsWith('[');
 		const borderColor = '#000000';
@@ -13,9 +13,6 @@ export class ClassBoxRenderer {
 
 		return `
 			<div class="uml-box" data-class="${className}" style="
-				position: absolute;
-				left: ${pos.x}px;
-				top: ${pos.y}px;
 				width: ${this.boxWidth}px;
 				background: white;
 				border: 2px ${borderStyle} ${borderColor};
@@ -23,7 +20,6 @@ export class ClassBoxRenderer {
 				box-shadow: 2px 2px 4px rgba(0,0,0,0.15);
 				font-family: Arial, Helvetica, sans-serif;
 				font-size: 12px;
-				z-index: 100;
 				pointer-events: auto;
 				box-sizing: border-box;
 			">

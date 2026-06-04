@@ -42,12 +42,8 @@ export class HierarchicalLayoutCalculator {
 				const classY = contentY + row * (this.config.boxHeight + this.config.classSpacing);
 				
 				// Store position with COMPOSITE KEY (filePath:className) for uniqueness
-				// Many files have multiple classes (e.g., types.ts with 15 types)
 				const uniqueKey = `${node.data.classInfo.filePath}:${node.data.classInfo.name}`;
 				this.classPositions.set(uniqueKey, { x: classX, y: classY });
-				
-				// Debug log - show both name and path
-				console.log(`Positioned ${node.data.classInfo.name} at (${classX}, ${classY}) in folder ${folder.fullPath} [${uniqueKey}]`);
 			});
 			
 			const classRows = Math.ceil(folder.classes.length / nodesPerRow);
@@ -55,22 +51,23 @@ export class HierarchicalLayoutCalculator {
 			const classAreaWidth = Math.min(nodesPerRow, folder.classes.length) * this.config.boxWidth + 
 								   (Math.min(nodesPerRow, folder.classes.length) - 1) * this.config.classSpacing;
 			
-			contentY += classAreaHeight + this.config.folderMargin;
+			contentY += classAreaHeight + (folder.children.size > 0 ? this.config.folderMargin : 0);
 			maxWidth = Math.max(maxWidth, classAreaWidth);
 		}
 		
-		// Layout child folders below classes
+		// Layout child folders vertically (simple and reliable)
 		const childFolders = Array.from(folder.children.values()).sort((a, b) => a.name.localeCompare(b.name));
+		
 		childFolders.forEach(child => {
 			const childSize = this.calculate(child, currentX, contentY);
 			contentY += childSize.height + this.config.folderMargin;
 			maxWidth = Math.max(maxWidth, childSize.width);
 		});
 		
-		// Ensure minimum folder size to prevent overlapping
+		// Ensure minimum folder size
 		const minWidth = folder.classes.length > 0 || folder.children.size > 0 ? 250 : 200;
 		const totalWidth = Math.max(maxWidth, minWidth) + this.config.folderPadding * 2;
-		const totalHeight = Math.max(contentY - y + this.config.folderPadding, 80); // Minimum height
+		const totalHeight = Math.max(contentY - y + this.config.folderPadding, 80);
 		
 		this.folderSizes.set(folder.fullPath, { x, y, width: totalWidth, height: totalHeight });
 		

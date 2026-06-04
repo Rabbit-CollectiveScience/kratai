@@ -2,56 +2,40 @@ import { FolderNode, FolderStructureBuilder } from './folderStructure';
 import { FolderSize } from './layoutCalculator';
 
 export class FolderBoxRenderer {
-	renderAll(folder: FolderNode, folderSizes: Map<string, FolderSize>, depth = 0): string {
-		const pos = folderSizes.get(folder.fullPath);
-		if (!pos) return '';
-		
+	renderAll(folder: FolderNode, depth = 0): string {
 		const folderIcon = this.getFolderIcon(folder.name);
 		const totalCount = FolderStructureBuilder.countClasses(folder);
 		
-		let html = this.renderFolder(folder, pos, folderIcon, totalCount, depth);
-		
-		// Render child folders recursively
-		const childFolders = Array.from(folder.children.values()).sort((a, b) => a.name.localeCompare(b.name));
-		childFolders.forEach(child => {
-			html += this.renderAll(child, folderSizes, depth + 1);
-		});
+		let html = this.renderFolder(folder, folderIcon, totalCount, depth);
 		
 		return html;
 	}
 
 	private renderFolder(
-		folder: FolderNode, 
-		pos: FolderSize,
+		folder: FolderNode,
 		icon: string,
 		totalCount: number,
 		depth: number
 	): string {
-		const tabWidth = Math.min(180, Math.max(120, folder.name.length * 8 + 60));
+		const childFolders = Array.from(folder.children.values()).sort((a, b) => a.name.localeCompare(b.name));
 		
 		return `
-			<!-- Package Tab -->
-			<div style="
-				position: absolute;
-				left: ${pos.x}px;
-				top: ${pos.y - 28}px;
-				width: ${tabWidth}px;
-				height: 28px;
-				background: #ddd;
-				border: 1px solid #000;
-				border-bottom: none;
-				z-index: ${6 - depth};
-				pointer-events: auto;
+			<div class="folder-container" style="
+				margin: ${depth === 0 ? '20px' : '10px'};
+				border: 2px solid #333;
+				background: #fafafa;
 			">
-				<div style="
-					padding: 5px 12px;
+				<!-- Folder Header -->
+				<div class="folder-header" style="
+					padding: 8px 12px;
+					background: #ddd;
+					border-bottom: 2px solid #333;
 					color: #000;
 					font-weight: 600;
 					font-size: 13px;
 					display: flex;
 					align-items: center;
 					gap: 6px;
-					height: 100%;
 				">
 					<span>${icon}</span>
 					<span>${folder.name}</span>
@@ -63,19 +47,33 @@ export class FolderBoxRenderer {
 						color: #fff;
 					">${totalCount}</span>` : ''}
 				</div>
-			</div>
-			<!-- Package Body -->
-			<div class="folder-box" style="
-				position: absolute;
-				left: ${pos.x}px;
-				top: ${pos.y}px;
-				width: ${pos.width}px;
-				height: ${pos.height}px;
-				background: transparent;
-				border: 1px solid #000;
-				z-index: ${5 - depth};
-				pointer-events: none;
-			">
+				
+				<!-- Folder Content: Classes in CSS Grid -->
+				${folder.classes.length > 0 ? `
+				<div class="classes-grid" style="
+					display: grid;
+					grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+					gap: 20px;
+					padding: 20px;
+				">
+					${folder.classes.map(node => {
+						const classRenderer = new (require('./classBoxRenderer').ClassBoxRenderer)(260);
+						return classRenderer.render(node.data.classInfo);
+					}).join('')}
+				</div>
+				` : ''}
+				
+				<!-- Child Folders -->
+				${childFolders.length > 0 ? `
+				<div class="child-folders" style="
+					display: flex;
+					flex-direction: column;
+					gap: 10px;
+					padding: ${folder.classes.length > 0 ? '0 10px 10px 10px' : '10px'};
+				">
+					${childFolders.map(child => this.renderAll(child, depth + 1)).join('')}
+				</div>
+				` : ''}
 			</div>
 		`;
 	}
