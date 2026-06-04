@@ -18,6 +18,7 @@ export class ConfigService {
 	static generateSmartDefaults(workspacePath: string): KrataiConfig {
 		// Common folder patterns for different project types
 		const commonSourceFolders = [
+			// JavaScript/TypeScript
 			'src',
 			'lib',
 			'app',
@@ -28,13 +29,36 @@ export class ConfigService {
 			'services',
 			'components',
 			'modules',
-			'core'
+			'core',
+			// PHP
+			'app',
+			'src',
+			'includes',
+			'classes',
+			// Python
+			'src',
+			'app',
+			'lib',
+			// Ruby
+			'app',
+			'lib',
+			// Java
+			'src/main/java',
+			'src',
+			// C#
+			'src',
+			// Go
+			'cmd',
+			'pkg',
+			'internal'
 		];
 
+		// Remove duplicates
+		const uniqueFolders = Array.from(new Set(commonSourceFolders));
 		const detectedFolders: string[] = [];
 
 		// Check which common folders exist
-		for (const folderName of commonSourceFolders) {
+		for (const folderName of uniqueFolders) {
 			const folderPath = path.join(workspacePath, folderName);
 			if (fs.existsSync(folderPath) && fs.statSync(folderPath).isDirectory()) {
 				detectedFolders.push(folderName);
@@ -57,9 +81,9 @@ export class ConfigService {
 
 	private static detectFileExtensions(workspacePath: string): string[] {
 		// Default to TypeScript
-		let detectedExtensions = ['.ts', '.tsx'];
+		let detectedExtensions: string[] = ['.ts', '.tsx'];
 
-		// Check for package.json to detect project type
+		// Check for package.json (Node.js projects)
 		const packageJsonPath = path.join(workspacePath, 'package.json');
 		if (fs.existsSync(packageJsonPath)) {
 			try {
@@ -85,6 +109,46 @@ export class ConfigService {
 			} catch (error) {
 				// Fallback to defaults
 			}
+			return detectedExtensions;
+		}
+
+		// Check for composer.json (PHP projects)
+		const composerJsonPath = path.join(workspacePath, 'composer.json');
+		if (fs.existsSync(composerJsonPath)) {
+			return ['.php'];
+		}
+
+		// Check for requirements.txt or setup.py (Python projects)
+		const requirementsTxtPath = path.join(workspacePath, 'requirements.txt');
+		const setupPyPath = path.join(workspacePath, 'setup.py');
+		const pyprojectTomlPath = path.join(workspacePath, 'pyproject.toml');
+		if (fs.existsSync(requirementsTxtPath) || fs.existsSync(setupPyPath) || fs.existsSync(pyprojectTomlPath)) {
+			return ['.py'];
+		}
+
+		// Check for Gemfile (Ruby projects)
+		const gemfilePath = path.join(workspacePath, 'Gemfile');
+		if (fs.existsSync(gemfilePath)) {
+			return ['.rb'];
+		}
+
+		// Check for go.mod (Go projects)
+		const goModPath = path.join(workspacePath, 'go.mod');
+		if (fs.existsSync(goModPath)) {
+			return ['.go'];
+		}
+
+		// Check for pom.xml or build.gradle (Java projects)
+		const pomXmlPath = path.join(workspacePath, 'pom.xml');
+		const buildGradlePath = path.join(workspacePath, 'build.gradle');
+		if (fs.existsSync(pomXmlPath) || fs.existsSync(buildGradlePath)) {
+			return ['.java'];
+		}
+
+		// Check for .csproj or .sln (C# projects)
+		const csprojFiles = fs.readdirSync(workspacePath).filter((f: string) => f.endsWith('.csproj') || f.endsWith('.sln'));
+		if (csprojFiles.length > 0) {
+			return ['.cs'];
 		}
 
 		return detectedExtensions;
