@@ -108,7 +108,7 @@ export class CodeParserService {
 				if (item !== 'node_modules' && item !== 'test' && !item.startsWith('.')) {
 					files.push(...this.findTypeScriptFiles(fullPath));
 				}
-			} else if (item.endsWith('.ts') && !item.endsWith('.d.ts')) {
+			} else if ((item.endsWith('.ts') || item.endsWith('.tsx')) && !item.endsWith('.d.ts')) {
 				files.push(fullPath);
 			}
 		}
@@ -139,6 +139,15 @@ export class CodeParserService {
 		};
 
 		visit(sourceFile);
+		
+		// If no classes/interfaces found, create a module entry for the file
+		if (classes.length === 0) {
+			const moduleInfo = this.extractModuleInfo(sourceFile, filePath);
+			if (moduleInfo) {
+				classes.push(moduleInfo);
+			}
+		}
+		
 		return classes;
 	}
 
@@ -298,6 +307,103 @@ export class CodeParserService {
 			parameters,
 			returnType: 'void',
 			visibility: 'public'
+		};
+	}
+
+	private static extractModuleInfo(sourceFile: ts.SourceFile, filePath: string): ClassInfo | null {
+		const fileName = path.basename(filePath, path.extname(filePath));
+		const moduleName = `[${fileName}]`; // Brackets indicate it's a module, not a class
+		
+		const properties: PropertyInfo[] = [];
+		const methods: MethodInfo[] = [];
+		
+		// Visit all top-level nodes
+		sourceFile.forEachChild(node => {
+			// Exported function declarations
+			if (ts.isFunctionDeclaration(node) && node.name) {
+				const isExported = node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword || m.kind === ts.SyntaxKind.DefaultKeyword);
+				if (isExported) {
+					const parameters = node.parameters.map(p => ({
+						name: p.name.getText(),
+						type: p.type?.getText() || 'any',
+						optional: !!p.questionToken
+					}));
+					const returnType = node.type?.getText() || 'void';
+					
+					methods.push({
+						name: node.name.getText(),
+						parameters,
+						returnType,
+						visibility: 'public',
+						isStatic: true
+					});
+				}
+			}
+			
+			// Exported variables/constants (including React components)
+			if (ts.isVariableStatement(node)) {
+				const isExported = node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword);
+				
+				for (const declaration of node.declarationList.declarations) {
+					if (ts.isIdentifier(declaration.name)) {
+						const name = declaration.name.getText();
+						const isConst = (node.declarationList.flags & ts.NodeFlags.Const) !== 0;
+						
+						// Check if it's a function (React component or arrow function)
+						if (declaration.initializer && 
+							(ts.isArrowFunction(declaration.initializer) || 
+							 ts.isFunctionExpression(declaration.initializer))) {
+							
+							if (isExported) {
+								const funcNode = declaration.initializer;
+								const parameters = funcNode.parameters.map(p => ({
+									name: p.name.getText(),
+									type: p.type?.getText() || 'any',
+									optional: !!p.questionToken
+								}));
+								const returnType = funcNode.type?.getText() || (name.match(/^[A-Z]/) ? 'JSX.Element' : 'any');
+								
+								methods.push({
+									name,
+									parameters,
+									returnType,
+									visibility: 'public',
+									isStatic: true
+								});
+							}
+						} else if (isExported) {
+							// Regular exported variable/constant
+							const type = declaration.type?.getText() || (declaration.initializer ? 'inferred' : 'any');
+							
+							properties.push({
+								name,
+								type,
+								visibility: 'public',
+								isStatic: true,
+								isReadonly: isConst
+							});
+						}
+					}
+				}
+			}
+			
+			// Named exports
+			if (ts.isExportDeclaration(node) && node.exportClause && ts.isNamedExports(node.exportClause)) {
+				// Just note that there are exports (actual values would need deeper analysis)
+			}
+		});
+		
+		// Only create module if there are exported items
+		if (properties.length === 0 && methods.length === 0) {
+			return null;
+		}
+		
+		return {
+			name: moduleName,
+			filePath,
+			properties,
+			methods,
+			isInterface: false
 		};
 	}
 
