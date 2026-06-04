@@ -19,6 +19,11 @@ export class FolderBoxRenderer {
 	): string {
 		const childFolders = Array.from(folder.children.values()).sort((a, b) => a.name.localeCompare(b.name));
 		
+		// Pre-render child folders to avoid template string issues
+		const childFoldersHTML = childFolders.length > 0
+			? childFolders.map(child => this.renderAll(child, depth + 1)).join('\n')
+			: '';
+		
 		return `
 			<div class="folder-container" data-folder="${folder.fullPath}" data-depth="${depth}" style="
 				margin: ${depth === 0 ? '20px' : '10px'};
@@ -59,19 +64,19 @@ export class FolderBoxRenderer {
 					${folder.classes.map(node => {
 						const classRenderer = new (require('./classBoxRenderer').ClassBoxRenderer)(260);
 						return classRenderer.render(node.data.classInfo);
-					}).join('')}
+					}).join('\n')}
 				</div>
 				` : ''}
 				
 				<!-- Child Folders -->
-				${childFolders.length > 0 ? `
+				${childFoldersHTML ? `
 				<div class="child-folders" data-parent="${folder.fullPath}" style="
 					display: flex;
 					flex-direction: column;
 					gap: 10px;
 					padding: ${folder.classes.length > 0 ? '0 10px 10px 10px' : '10px'};
 				">
-					${childFolders.map(child => this.renderAll(child, depth + 1)).join('')}
+${childFoldersHTML}
 				</div>
 				` : ''}
 			</div>

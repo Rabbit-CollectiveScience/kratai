@@ -10,9 +10,13 @@ export class ClassBoxRenderer {
 		const borderColor = '#000000';
 		const borderStyle = classInfo.isInterface ? 'dashed' : 'solid';
 		const displayName = isModule ? className.slice(1, -1) : className;
+		
+		// Escape HTML to prevent malformed attributes
+		const safeClassName = this.escapeHtml(className);
+		const safeDisplayName = this.escapeHtml(displayName);
 
 		return `
-			<div class="uml-box" data-class="${className}" style="
+			<div class="uml-box" data-class="${safeClassName}" style="
 				width: ${this.boxWidth}px;
 				background: white;
 				border: 2px ${borderStyle} ${borderColor};
@@ -23,11 +27,20 @@ export class ClassBoxRenderer {
 				pointer-events: auto;
 				box-sizing: border-box;
 			">
-				${this.renderHeader(classInfo, isModule, displayName)}
+				${this.renderHeader(classInfo, isModule, safeDisplayName)}
 				${this.renderProperties(classInfo, isModule)}
 				${this.renderMethods(classInfo, isModule)}
 			</div>
 		`;
+	}
+	
+	private escapeHtml(text: string): string {
+		return text
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#039;');
 	}
 
 	private renderHeader(classInfo: ClassInfo, isModule: boolean, displayName: string): string {
@@ -52,14 +65,20 @@ export class ClassBoxRenderer {
 
 	private renderProperties(classInfo: ClassInfo, isModule: boolean): string {
 		const label = isModule ? 'No exports' : 'No properties';
-		const items = classInfo.properties.slice(0, 5).map(prop => `
-			<div style="padding: 3px 8px; color: #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px;" title="${prop.name}: ${prop.type}">
+		const items = classInfo.properties.slice(0, 5).map(prop => {
+			const safeName = this.escapeHtml(prop.name);
+			const safeType = this.escapeHtml(prop.type);
+			const safeTruncatedType = this.escapeHtml(this.truncateType(prop.type));
+			
+			return `
+			<div style="padding: 3px 8px; color: #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px;" title="${safeName}: ${safeType}">
 				<span style="color: ${this.getVisibilityColor(prop.visibility)};">
 					${this.getVisibilitySymbol(prop.visibility)}
 				</span>
-				${prop.name}: ${this.truncateType(prop.type)}
+				<span>${safeName}: ${safeTruncatedType}</span>
 			</div>
-		`).join('');
+		`;
+		}).join('');
 
 		const overflow = classInfo.properties.length > 5 ? 
 			`<div style="color: #666; font-style: italic; padding: 3px 8px; font-size: 11px;">+${classInfo.properties.length - 5} more</div>` : '';
@@ -81,15 +100,21 @@ export class ClassBoxRenderer {
 
 	private renderMethods(classInfo: ClassInfo, isModule: boolean): string {
 		const label = isModule ? 'No functions' : 'No methods';
-		const items = classInfo.methods.slice(0, 5).map(method => `
+		const items = classInfo.methods.slice(0, 5).map(method => {
+			const safeName = this.escapeHtml(method.name);
+			const safeParams = this.escapeHtml(this.truncateParams(method.parameters));
+			const paramNames = method.parameters.map(p => this.escapeHtml(p.name)).join(', ');
+			
+			return `
 			<div style="padding: 3px 8px; color: #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px;" 
-				 title="${method.name}(${method.parameters.map(p => p.name).join(', ')})">
+				 title="${safeName}(${paramNames})">
 				<span style="color: ${this.getVisibilityColor(method.visibility)};">
 					${this.getVisibilitySymbol(method.visibility)}
 				</span>
-				${method.name}(${this.truncateParams(method.parameters)})
+				<span>${safeName}(${safeParams})</span>
 			</div>
-		`).join('');
+		`;
+		}).join('');
 
 		const overflow = classInfo.methods.length > 5 ? 
 			`<div style="color: #666; font-style: italic; padding: 3px 8px; font-size: 11px;">+${classInfo.methods.length - 5} more</div>` : '';
