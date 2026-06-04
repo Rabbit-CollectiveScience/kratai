@@ -2,20 +2,26 @@ import * as ts from 'typescript';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ClassInfo, PropertyInfo, MethodInfo, DiagramData, ClassRelationship } from '../types/diagram';
+import { KrataiConfig } from '../types/config';
+import { ConfigService } from './configService';
 
 export class CodeParserService {
 	
-	static async parseWorkspace(workspacePath: string): Promise<DiagramData> {
+	static async parseWorkspace(workspacePath: string, config?: KrataiConfig): Promise<DiagramData> {
 		const classes: ClassInfo[] = [];
 		const relationships: ClassRelationship[] = [];
 
-		// Find all TypeScript files in src folder
-		const srcPath = path.join(workspacePath, 'src');
-		if (!fs.existsSync(srcPath)) {
-			throw new Error('No src folder found in workspace');
+		// Load config if not provided
+		if (!config) {
+			config = await ConfigService.loadConfig(workspacePath);
 		}
 
-		const files = this.findTypeScriptFiles(srcPath);
+		// Find all files based on configuration
+		const files = this.findFilesWithConfig(workspacePath, config);
+
+		if (files.length === 0) {
+			throw new Error('No files found to parse. Check your configuration.');
+		}
 
 		for (const file of files) {
 			const fileClasses = this.parseFile(file);
@@ -93,6 +99,49 @@ export class CodeParserService {
 		}
 
 		return { classes, relationships };
+	}
+
+	private static findFilesWithConfig(workspacePath: string, config: KrataiConfig): string[] {
+		const files: string[] = [];
+		
+		// If no folders selected, start from workspace root
+		const foldersToScan = config.selectedFolders.length > 0 
+			? config.selectedFolders 
+			: ['']; // Empty string means scan from root
+
+		for (const folder of foldersToScan) {
+			const fullPath = path.join(workspacePath, folder);
+			if (fs.existsSync(fullPath)) {
+				this.scanDirectory(fullPath, workspacePath, config, files);
+			}
+		}
+
+		return files;
+	}
+
+	private static scanDirectory(
+		dir: string,
+		workspacePath: string,
+		config: KrataiConfig,
+		files: string[]
+	): void {
+		const items = fs.readdirSync(dir);
+		
+		for (const item of items) {
+			const fullPath = path.join(dir, item);
+			const stat = fs.statSync(fullPath);
+			const relativePath = path.relative(workspacePath, fullPath);
+
+			if (stat.isDirectory()) {
+				if (ConfigService.shouldIncludeFolder(relativePath, config)) {
+					this.scanDirectory(fullPath, workspacePath, config, files);
+				}
+			} else {
+				if (ConfigService.shouldIncludeFile(fullPath, config)) {
+					files.push(fullPath);
+				}
+			}
+		}
 	}
 
 	private static findTypeScriptFiles(dir: string): string[] {

@@ -1,0 +1,278 @@
+import * as vscode from 'vscode';
+import { WorkspaceScanner } from '../services/workspaceScanner';
+import { ConfigService } from '../services/configService';
+import { KrataiConfig } from '../types/config';
+
+export async function showConfigPanel(context: vscode.ExtensionContext): Promise<void> {
+	if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+		vscode.window.showErrorMessage('No workspace folder is open!');
+		return;
+	}
+
+	const workspaceFolder = vscode.workspace.workspaceFolders[0];
+	const workspacePath = workspaceFolder.uri.fsPath;
+
+	// Load current config
+	const config = await ConfigService.loadConfig(workspacePath);
+
+	// Scan workspace
+	const folderTree = WorkspaceScanner.scanFolders(workspacePath, config.selectedFolders);
+	const extensions = WorkspaceScanner.discoverExtensions(workspacePath);
+
+	// Update selection state from config
+	extensions.forEach(ext => {
+		ext.selected = config.selectedExtensions.includes(ext.extension);
+	});
+
+	// Create webview panel
+	const panel = vscode.window.createWebviewPanel(
+		'krataiConfig',
+		'⚙️ Kratai Configuration',
+		vscode.ViewColumn.One,
+		{
+			enableScripts: true
+		}
+	);
+
+	panel.webview.html = generateConfigHTML(folderTree, extensions);
+
+	// Handle messages from webview
+	panel.webview.onDidReceiveMessage(
+		async message => {
+			switch (message.command) {
+				case 'save':
+					const newConfig: KrataiConfig = {
+						selectedFolders: message.selectedFolders,
+						selectedExtensions: message.selectedExtensions,
+						respectGitignore: config.respectGitignore,
+						followSymlinks: config.followSymlinks
+					};
+					
+					await ConfigService.saveConfig(workspacePath, newConfig);
+					vscode.window.showInformationMessage('Configuration saved!');
+					
+					// Optionally generate diagram immediately
+					if (message.generateDiagram) {
+						panel.dispose();
+						vscode.commands.executeCommand('kratai.generateClassDiagram');
+					}
+					break;
+			}
+		},
+		undefined,
+		context.subscriptions
+	);
+}
+
+function generateConfigHTML(folderTree: any, extensions: any[]): string {
+	return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kratai Configuration</title>
+    <style>
+        body {
+            font-family: var(--vscode-font-family);
+            padding: 20px;
+            color: var(--vscode-foreground);
+            background: var(--vscode-editor-background);
+        }
+        h2 {
+            color: var(--vscode-textLink-foreground);
+            border-bottom: 1px solid var(--vscode-panel-border);
+            padding-bottom: 10px;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--vscode-panel-border);
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            color: var(--vscode-foreground);
+            font-size: 14px;
+        }
+        .tab.active {
+            border-bottom: 2px solid var(--vscode-textLink-foreground);
+            color: var(--vscode-textLink-foreground);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .folder-tree {
+            margin-left: 20px;
+        }
+        .folder-item {
+            display: flex;
+            align-items: center;
+            padding: 4px 0;
+            gap: 8px;
+        }
+        .folder-item input[type="checkbox"] {
+            cursor: pointer;
+        }
+        .folder-item label {
+            cursor: pointer;
+            user-select: none;
+        }
+        .extension-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .extension-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: var(--vscode-editor-inactiveSelectionBackground);
+            border-radius: 4px;
+        }
+        .extension-item input[type="checkbox"] {
+            cursor: pointer;
+        }
+        .extension-count {
+            margin-left: auto;
+            color: var(--vscode-descriptionForeground);
+            font-size: 12px;
+        }
+        .actions {
+            margin-top: 30px;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 8px 16px;
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        button:hover {
+            background: var(--vscode-button-hoverBackground);
+        }
+        button.secondary {
+            background: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+        }
+        .info-box {
+            background: var(--vscode-textBlockQuote-background);
+            border-left: 4px solid var(--vscode-textLink-foreground);
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <h2>⚙️ Parser Configuration</h2>
+    
+    <div class="info-box">
+        📌 Select which folders and file types to include in the class diagram.
+        Default exclusions: node_modules, dist, build, out, .git
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('folders')">📁 Folders</button>
+        <button class="tab" onclick="switchTab('extensions')">📄 File Types</button>
+    </div>
+
+    <div id="folders-tab" class="tab-content active">
+        <h3>Select Folders to Parse</h3>
+        <div class="folder-tree">
+            ${renderFolderTree(folderTree)}
+        </div>
+    </div>
+
+    <div id="extensions-tab" class="tab-content">
+        <h3>Select File Extensions</h3>
+        <div class="extension-list">
+            ${extensions.map(ext => `
+                <div class="extension-item">
+                    <input type="checkbox" id="ext-${ext.extension.replace('.', '')}" 
+                           value="${ext.extension}" ${ext.selected ? 'checked' : ''}>
+                    <label for="ext-${ext.extension.replace('.', '')}">${ext.extension}</label>
+                    <span class="extension-count">${ext.count} files</span>
+                </div>
+            `).join('')}
+        </div>
+    </div>
+
+    <div class="actions">
+        <button onclick="saveConfig(true)">💾 Save & Generate Diagram</button>
+        <button onclick="saveConfig(false)" class="secondary">💾 Save Only</button>
+    </div>
+
+    <script>
+        const vscode = acquireVsCodeApi();
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+
+        function toggleFolder(checkbox, path) {
+            // Toggle all children
+            const container = checkbox.closest('.folder-item').nextElementSibling;
+            if (container && container.classList.contains('folder-tree')) {
+                const childCheckboxes = container.querySelectorAll('input[type="checkbox"]');
+                childCheckboxes.forEach(cb => cb.checked = checkbox.checked);
+            }
+        }
+
+        function saveConfig(generateDiagram) {
+            const selectedFolders = [];
+            document.querySelectorAll('.folder-item input[type="checkbox"]:checked').forEach(cb => {
+                selectedFolders.push(cb.value);
+            });
+
+            const selectedExtensions = [];
+            document.querySelectorAll('.extension-item input[type="checkbox"]:checked').forEach(cb => {
+                selectedExtensions.push(cb.value);
+            });
+
+            vscode.postMessage({
+                command: 'save',
+                selectedFolders,
+                selectedExtensions,
+                generateDiagram
+            });
+        }
+    </script>
+</body>
+</html>`;
+}
+
+function renderFolderTree(node: any, level: number = 0): string {
+	let html = `
+		<div class="folder-item" style="margin-left: ${level * 20}px">
+			<input type="checkbox" id="folder-${node.path || 'root'}" 
+			       value="${node.path}" ${node.selected ? 'checked' : ''}
+			       onchange="toggleFolder(this, '${node.path}')">
+			<label for="folder-${node.path || 'root'}">📁 ${node.name}</label>
+		</div>
+	`;
+
+	if (node.children && node.children.length > 0) {
+		html += `<div class="folder-tree">`;
+		for (const child of node.children) {
+			html += renderFolderTree(child, level + 1);
+		}
+		html += `</div>`;
+	}
+
+	return html;
+}

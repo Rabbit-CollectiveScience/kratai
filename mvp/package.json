@@ -39,6 +39,10 @@
         "title": "Kratai: Generate Class Diagram"
       },
       {
+        "command": "kratai.showConfigPanel",
+        "title": "Kratai: Configure Parser"
+      },
+      {
         "command": "kratai.openClassDiagram",
         "title": "Generate Class Diagram",
         "icon": "$(graph)"
@@ -47,6 +51,11 @@
         "command": "kratai.openGitChanges",
         "title": "Show Git Changes",
         "icon": "$(git-compare)"
+      },
+      {
+        "command": "kratai.openConfig",
+        "title": "Configure Parser",
+        "icon": "$(gear)"
       }
     ]
   },
