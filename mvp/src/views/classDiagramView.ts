@@ -248,17 +248,6 @@ export class ClassDiagramView {
         .folder-box {
             transition: opacity 0.2s;
         }
-        .folder-header:hover {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.35), rgba(118, 75, 162, 0.35)) !important;
-        }
-        .folder-header:active {
-            transform: scale(0.98);
-        }
-        .collapse-icon {
-            display: inline-block;
-            width: 16px;
-            text-align: center;
-        }
         .zoom-controls {
             position: fixed;
             top: 100px;
@@ -378,7 +367,6 @@ export class ClassDiagramView {
     
     <script>
         let currentZoom = 1;
-        const collapsedFolders = new Set();
         
         function zoomIn() {
             currentZoom = Math.min(currentZoom + 0.2, 3);
@@ -398,92 +386,6 @@ export class ClassDiagramView {
         function applyZoom() {
             const diagram = document.getElementById('diagram');
             diagram.style.transform = 'scale(' + currentZoom + ')';
-        }
-        
-        function toggleFolder(folderId) {
-            const icon = document.getElementById('collapse-' + folderId);
-            const folderBox = document.querySelector('[data-folder-id="' + folderId + '"]');
-            
-            if (!folderBox) return;
-            
-            const folderPath = folderBox.getAttribute('data-folder-path');
-            const originalHeight = folderBox.getAttribute('data-original-height');
-            
-            if (collapsedFolders.has(folderId)) {
-                // Expand - restore original size
-                collapsedFolders.delete(folderId);
-                icon.textContent = '▼';
-                folderBox.style.height = originalHeight + 'px';
-                folderBox.style.overflow = '';
-                showChildrenOfFolder(folderPath);
-            } else {
-                // Collapse - shrink to header only
-                collapsedFolders.add(folderId);
-                icon.textContent = '▶';
-                folderBox.style.height = '40px';
-                folderBox.style.overflow = 'hidden';
-                hideChildrenOfFolder(folderPath);
-            }
-        }
-        
-        function hideChildrenOfFolder(folderPath) {
-            // Hide all classes in this folder
-            const classes = document.querySelectorAll('.uml-box[data-folder-path="' + folderPath + '"]');
-            classes.forEach(c => {
-                c.style.display = 'none';
-            });
-            
-            // Hide ALL child folders (including nested ones)
-            const folders = document.querySelectorAll('.folder-box');
-            folders.forEach(f => {
-                const childPath = f.getAttribute('data-folder-path');
-                if (childPath && childPath.startsWith(folderPath + '/')) {
-                    f.style.display = 'none';
-                    
-                    // Also hide classes in all descendant folders
-                    const childClasses = document.querySelectorAll('.uml-box[data-folder-path="' + childPath + '"]');
-                    childClasses.forEach(c => {
-                        c.style.display = 'none';
-                    });
-                }
-            });
-        }
-        
-        function showChildrenOfFolder(folderPath) {
-            // Show all classes directly in this folder
-            const classes = document.querySelectorAll('.uml-box[data-folder-path="' + folderPath + '"]');
-            classes.forEach(c => {
-                c.style.display = 'block';
-            });
-            
-            // Show ALL child folders recursively
-            const folders = document.querySelectorAll('.folder-box');
-            folders.forEach(f => {
-                const childPath = f.getAttribute('data-folder-path');
-                if (childPath && childPath.startsWith(folderPath + '/')) {
-                    const childId = f.getAttribute('data-folder-id');
-                    const childOriginalHeight = f.getAttribute('data-original-height');
-                    
-                    // Always show the folder itself
-                    f.style.display = 'block';
-                    
-                    // Restore state based on whether child is collapsed
-                    if (!collapsedFolders.has(childId)) {
-                        // Child is expanded - show full size
-                        f.style.height = childOriginalHeight + 'px';
-                        f.style.overflow = '';
-                        
-                        const childClasses = document.querySelectorAll('.uml-box[data-folder-path="' + childPath + '"]');
-                        childClasses.forEach(c => {
-                            c.style.display = 'block';
-                        });
-                    } else {
-                        // Child is collapsed - keep at header height
-                        f.style.height = '40px';
-                        f.style.overflow = 'hidden';
-                    }
-                }
-            });
         }
         
         let debugMode = false;
