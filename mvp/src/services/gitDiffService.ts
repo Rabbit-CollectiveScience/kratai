@@ -237,4 +237,17 @@ export class GitDiffService {
 			return null;
 		}
 	}
+
+	/**
+	 * Get the previous version of a modified file from git history
+	 */
+	static async getFileContentFromHistory(workspacePath: string, filePath: string, baseCommit: string = 'HEAD~1'): Promise<string | null> {
+		try {
+			const { stdout } = await execAsync(`git show ${baseCommit}:"${filePath}"`, { cwd: workspacePath });
+			return stdout;
+		} catch (error) {
+			console.error(`Failed to get file content from history for ${filePath}:`, error);
+			return null;
+		}
+	}
 }

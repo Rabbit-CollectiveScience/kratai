@@ -95,10 +95,31 @@ export class GitDiffEnricher {
 				// File is modified - need to check member-level changes
 				console.log(`  🔍 Found "${normalizedPath}" in modified files, checking members...`);
 				const fileChange = diffInfo.fileChanges.get(normalizedPath);
+				
+				// Get the old version from git to detect deleted members
+				const oldFileContent = await GitDiffService.getFileContentFromHistory(workspacePath, normalizedPath, baseCommit);
+				let oldClasses: ClassInfo[] = [];
+				
+				if (oldFileContent) {
+					// Parse the old version
+					const tempFilePath = path.join(os.tmpdir(), `kratai_old_${Date.now()}_${path.basename(normalizedPath)}`);
+					fs.writeFileSync(tempFilePath, oldFileContent);
+					
+					try {
+						oldClasses = CodeParserService.parseFile(tempFilePath);
+					} finally {
+						try { fs.unlinkSync(tempFilePath); } catch (e) { /* ignore */ }
+					}
+				}
+				
+				// Find the matching old class
+				const oldClass = oldClasses.find(c => c.name === classInfo.name);
+				
 				if (fileChange) {
 					const hasModifiedMembers = this.enrichMembersWithChanges(
 						classInfo,
-						fileChange
+						fileChange,
+						oldClass
 					);
 					classInfo.changeStatus = hasModifiedMembers ? 'modified' : 'unchanged';
 					if (hasModifiedMembers) {
@@ -137,7 +158,8 @@ export class GitDiffEnricher {
 	 */
 	private static enrichMembersWithChanges(
 		classInfo: ClassInfo,
-		fileChange: { addedLines: Set<number>; deletedLines: Set<number> }
+		fileChange: { addedLines: Set<number>; deletedLines: Set<number> },
+		oldClass?: ClassInfo
 	): boolean {
 		let hasChanges = false;
 
@@ -145,8 +167,42 @@ export class GitDiffEnricher {
 		console.log(`    📝 Added lines:`, Array.from(fileChange.addedLines).slice(0, 10));
 		console.log(`    📝 Deleted lines:`, Array.from(fileChange.deletedLines).slice(0, 10));
 
+		// If we have the old version, detect deleted members
+		if (oldClass) {
+			// Check for deleted properties
+			for (const oldProp of oldClass.properties) {
+				const stillExists = classInfo.properties.some(p => p.name === oldProp.name);
+				if (!stillExists) {
+					// Property was deleted - add it back with 'deleted' status
+					classInfo.properties.push({
+						...oldProp,
+						changeStatus: 'deleted'
+					});
+					hasChanges = true;
+					console.log(`      🔹 Property "${oldProp.name}" → DELETED (not in current version)`);
+				}
+			}
+			
+			// Check for deleted methods
+			for (const oldMethod of oldClass.methods) {
+				const stillExists = classInfo.methods.some(m => m.name === oldMethod.name);
+				if (!stillExists) {
+					// Method was deleted - add it back with 'deleted' status
+					classInfo.methods.push({
+						...oldMethod,
+						changeStatus: 'deleted'
+					});
+					hasChanges = true;
+					console.log(`      🔸 Method "${oldMethod.name}" → DELETED (not in current version)`);
+				}
+			}
+		}
+
 		// Check properties
 		for (const prop of classInfo.properties) {
+			// Skip if already marked as deleted
+			if (prop.changeStatus === 'deleted') continue;
+			
 			if (prop.lineNumber) {
 				console.log(`      🔹 Property "${prop.name}" at line ${prop.lineNumber}`);
 				if (fileChange.addedLines.has(prop.lineNumber)) {
@@ -172,6 +228,9 @@ export class GitDiffEnricher {
 
 		// Check methods
 		for (const method of classInfo.methods) {
+			// Skip if already marked as deleted
+			if (method.changeStatus === 'deleted') continue;
+			
 			if (method.lineNumber) {
 				console.log(`      🔸 Method "${method.name}" at line ${method.lineNumber}`);
 				if (fileChange.addedLines.has(method.lineNumber)) {
