@@ -69,6 +69,31 @@ export class ClassDiagramView {
             justify-content: space-between;
             align-items: center;
         }
+        .header-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .header-controls button {
+            padding: 8px 16px;
+            border: 2px solid #333;
+            background: white;
+            color: #333;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+        .header-controls button:hover {
+            background: #f0f0f0;
+        }
+        .header-controls .settings-btn {
+            border-color: #3498db;
+            color: #3498db;
+        }
+        .header-controls .settings-btn:hover {
+            background: #e3f2fd;
+        }
         .header h1 {
             margin: 0;
             font-size: 1.5em;
@@ -116,32 +141,7 @@ export class ClassDiagramView {
             position: relative;
             z-index: 1;
         }
-        .zoom-controls {
-            position: fixed;
-            top: 100px;
-            right: 20px;
-            background: white;
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            z-index: 1001;
-        }
-        .zoom-controls button {
-            display: block;
-            margin: 5px 0;
-            padding: 8px 16px;
-            border: 2px solid #333;
-            background: white;
-            color: #333;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9em;
-            width: 100%;
-            font-weight: 500;
-        }
-        .zoom-controls button:hover {
-            background: #f0f0f0;
-        }
+
     </style>
 </head>
 <body>
@@ -150,12 +150,12 @@ export class ClassDiagramView {
             <h1>📊 Hierarchical Class Diagram (CSS Grid)</h1>
             <p>${workspaceName} • ${classCount} classes • ${folderCount} folders • ${edgeCount} relationships</p>
         </div>
-    </div>
-    
-    <div class="zoom-controls">
-        <button onclick="zoomIn()">🔍 Zoom In</button>
-        <button onclick="zoomOut()">🔍 Zoom Out</button>
-        <button onclick="resetZoom()">↺ Reset</button>
+        <div class="header-controls">
+            <button onclick="zoomIn()">🔍 Zoom In</button>
+            <button onclick="zoomOut()">🔍 Zoom Out</button>
+            <button onclick="resetZoom()">↺ Reset</button>
+            <button class="settings-btn" onclick="openSettings()">⚙️ Settings</button>
+        </div>
     </div>
     
     <div class="diagram-container" id="diagram">
@@ -174,6 +174,15 @@ export class ClassDiagramView {
         }
         
         let currentZoom = 1;
+        
+        // Initialize VS Code API for communication
+        const vscode = acquireVsCodeApi();
+        
+        function openSettings() {
+            vscode.postMessage({
+                command: 'openSettings'
+            });
+        }
         
         function zoomIn() {
             currentZoom = Math.min(currentZoom + 0.2, 3);

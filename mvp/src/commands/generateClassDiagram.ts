@@ -76,6 +76,19 @@ export async function generateClassDiagram(context: vscode.ExtensionContext): Pr
 
 			panel.webview.html = ClassDiagramView.generate(nodes, edges, workspaceName);
 
+			// Handle messages from the webview
+			panel.webview.onDidReceiveMessage(
+				message => {
+					switch (message.command) {
+						case 'openSettings':
+							vscode.commands.executeCommand('kratai.showConfigPanel');
+							break;
+					}
+				},
+				undefined,
+				context.subscriptions
+			);
+
 			vscode.window.showInformationMessage(
 				`Found ${diagramData.classes.length} classes with ${diagramData.relationships.length} relationships!`
 			);
