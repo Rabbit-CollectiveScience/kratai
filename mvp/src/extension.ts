@@ -29,12 +29,6 @@ export function activate(context: vscode.ExtensionContext) {
 		})
 	);
 
-	context.subscriptions.push(
-		vscode.commands.registerCommand('kratai.openConfig', () => {
-			vscode.commands.executeCommand('kratai.showConfigPanel');
-		})
-	);
-
 	// Register all commands
 	context.subscriptions.push(
 		vscode.commands.registerCommand('kratai.showFileSummary', () => showGitChanges(context)),
