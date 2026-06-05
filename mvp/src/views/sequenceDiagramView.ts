@@ -175,6 +175,16 @@ export class SequenceDiagramView {
 			`;
 		}
 		
+		// Helper function to get background color based on change status
+		const getChangeColor = (changeStatus?: 'added' | 'deleted' | 'modified' | 'unchanged'): string => {
+			switch (changeStatus) {
+				case 'added': return '#c8e6c9'; // Light green
+				case 'deleted': return '#ffcdd2'; // Light red
+				case 'modified': return '#fff9c4'; // Light yellow
+				default: return 'white'; // Unchanged or no status
+			}
+		};
+		
 		// Ensure starting class is first, then sort the rest
 		const actorsArray = Array.from(sequenceData.actors);
 		const actors: string[] = [];
@@ -245,6 +255,7 @@ export class SequenceDiagramView {
 			if (fromX === toX) {
 				// Self-call (method calling itself)
 				const loopWidth = 60;
+				const bgColor = getChangeColor(call.changeStatus);
 				svgContent += `
 					<!-- Self-call: ${call.toMethod} -->
 					<path d="M ${fromX} ${yPos} L ${fromX + loopWidth} ${yPos} L ${fromX + loopWidth} ${yPos + 30} L ${fromX} ${yPos + 30}" 
@@ -252,13 +263,14 @@ export class SequenceDiagramView {
 					<polygon points="${fromX},${yPos + 30 - 4} ${fromX - 5},${yPos + 30} ${fromX},${yPos + 30 + 4}" fill="#333"/>
 					
 					<!-- Label -->
-				<rect x="${fromX + 10}" y="${yPos - 15}" width="100" height="22" fill="white" stroke="#666" stroke-width="1"/>
+				<rect x="${fromX + 10}" y="${yPos - 15}" width="100" height="22" fill="${bgColor}" stroke="#666" stroke-width="1"/>
 					<text x="${fromX + 15}" y="${yPos}" class="message-number">${messageNumber}.</text>
 					<text x="${fromX + 28}" y="${yPos}" class="message-text" title="${this.escapeHtml(call.toMethod)}()">${this.escapeHtml(methodDisplay)}()</text>
 				`;
 			} else {
 				const direction = toX > fromX ? 1 : -1;
 				const midX = (fromX + toX) / 2;
+				const bgColor = getChangeColor(call.changeStatus);
 				
 				// Call arrow (solid line with arrowhead)
 				svgContent += `
@@ -267,7 +279,7 @@ export class SequenceDiagramView {
 					<polygon points="${toX - (direction * 8)},${yPos - 5} ${toX},${yPos} ${toX - (direction * 8)},${yPos + 5}" class="arrowhead"/>
 					
 					<!-- Message number and label -->
-					<rect x="${midX - 60}" y="${yPos - 18}" width="120" height="22" fill="white" stroke="#666" stroke-width="1"/>
+					<rect x="${midX - 60}" y="${yPos - 18}" width="120" height="22" fill="${bgColor}" stroke="#666" stroke-width="1"/>
 					<text x="${midX - 55}" y="${yPos - 2}" class="message-number">${messageNumber}.</text>
 					<text x="${midX - 40}" y="${yPos - 2}" class="message-text" title="${this.escapeHtml(call.toMethod)}()">${this.escapeHtml(methodDisplay)}()</text>
 					

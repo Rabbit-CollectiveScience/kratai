@@ -9,6 +9,7 @@ export interface MethodCall {
 	toClass: string;
 	toMethod: string;
 	depth: number;
+	changeStatus?: 'added' | 'deleted' | 'modified' | 'unchanged';
 }
 
 export interface SequenceData {
@@ -147,7 +148,8 @@ export class MethodTracerService {
 								fromMethod: method.name,
 								toClass: implClass.name,
 								toMethod: implMethod.name,
-								depth: depth
+								depth: depth,
+								changeStatus: implMethod.changeStatus || 'unchanged'
 							});
 							
 							// Continue tracing the implementation
@@ -187,18 +189,21 @@ export class MethodTracerService {
 			if (targetClass) {
 				actors.add(targetClass.name);
 				
+				// Find the target method to get its changeStatus
+				const targetMethod = targetClass.methods.find(m => m.name === call.methodName);
+				
 				calls.push({
 					fromClass: classInfo.name,
 					fromMethod: method.name,
 					toClass: targetClass.name,
 					toMethod: call.methodName,
-					depth: depth
+					depth: depth,
+					changeStatus: targetMethod?.changeStatus || 'unchanged'
 				});
 				
 				console.log(`    → ${classInfo.name}.${method.name}() calls ${targetClass.name}.${call.methodName}()`);
 				
 				// Recursively trace this method
-				const targetMethod = targetClass.methods.find(m => m.name === call.methodName);
 				if (targetMethod) {
 					this.traceMethodRecursive(
 						targetClass,
