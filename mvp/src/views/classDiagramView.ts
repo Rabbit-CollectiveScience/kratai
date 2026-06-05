@@ -235,6 +235,52 @@ export class ClassDiagramView {
             // Get container's position for offset calculation
             const containerRect = container.getBoundingClientRect();
             
+            // Helper function to find where a line intersects with a rectangle border
+            function getBoxEdgePoint(boxRect, centerX, centerY, targetX, targetY, scrollLeft, scrollTop) {
+                const dx = targetX - centerX;
+                const dy = targetY - centerY;
+                
+                if (dx === 0 && dy === 0) {
+                    return { x: centerX, y: centerY };
+                }
+                
+                const halfWidth = boxRect.width / 2;
+                const halfHeight = boxRect.height / 2;
+                
+                // Determine which edge the line exits from based on angle
+                if (Math.abs(dx) * halfHeight > Math.abs(dy) * halfWidth) {
+                    // Exits through left or right edge
+                    if (dx > 0) {
+                        // Right edge
+                        return {
+                            x: centerX + halfWidth,
+                            y: centerY + (halfWidth * dy / dx)
+                        };
+                    } else {
+                        // Left edge
+                        return {
+                            x: centerX - halfWidth,
+                            y: centerY - (halfWidth * dy / dx)
+                        };
+                    }
+                } else {
+                    // Exits through top or bottom edge
+                    if (dy > 0) {
+                        // Bottom edge
+                        return {
+                            x: centerX + (halfHeight * dx / dy),
+                            y: centerY + halfHeight
+                        };
+                    } else {
+                        // Top edge
+                        return {
+                            x: centerX - (halfHeight * dx / dy),
+                            y: centerY - halfHeight
+                        };
+                    }
+                }
+            }
+            
             EDGES.forEach(edge => {
                 const sourceBox = document.querySelector('[data-class="' + CSS.escape(edge.source) + '"]');
                 const targetBox = document.querySelector('[data-class="' + CSS.escape(edge.target) + '"]');
@@ -248,11 +294,15 @@ export class ClassDiagramView {
                 const sourceRect = sourceBox.getBoundingClientRect();
                 const targetRect = targetBox.getBoundingClientRect();
                 
-                // Convert to container-relative coordinates
-                const x1 = sourceRect.left - containerRect.left + sourceRect.width / 2 + container.scrollLeft;
-                const y1 = sourceRect.top - containerRect.top + sourceRect.height / 2 + container.scrollTop;
-                const x2 = targetRect.left - containerRect.left + targetRect.width / 2 + container.scrollLeft;
-                const y2 = targetRect.top - containerRect.top + targetRect.height / 2 + container.scrollTop;
+                // Calculate center points in container-relative coordinates
+                const sourceCenterX = sourceRect.left - containerRect.left + sourceRect.width / 2 + container.scrollLeft;
+                const sourceCenterY = sourceRect.top - containerRect.top + sourceRect.height / 2 + container.scrollTop;
+                const targetCenterX = targetRect.left - containerRect.left + targetRect.width / 2 + container.scrollLeft;
+                const targetCenterY = targetRect.top - containerRect.top + targetRect.height / 2 + container.scrollTop;
+                
+                // Calculate edge intersection points
+                const startPoint = getBoxEdgePoint(sourceRect, sourceCenterX, sourceCenterY, targetCenterX, targetCenterY, container.scrollLeft, container.scrollTop);
+                const endPoint = getBoxEdgePoint(targetRect, targetCenterX, targetCenterY, sourceCenterX, sourceCenterY, container.scrollLeft, container.scrollTop);
                 
                 // Determine line color based on relationship type
                 const type = edge.label || 'uses';
@@ -263,10 +313,10 @@ export class ClassDiagramView {
                 
                 // Create line element
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', x1);
-                line.setAttribute('y1', y1);
-                line.setAttribute('x2', x2);
-                line.setAttribute('y2', y2);
+                line.setAttribute('x1', startPoint.x);
+                line.setAttribute('y1', startPoint.y);
+                line.setAttribute('x2', endPoint.x);
+                line.setAttribute('y2', endPoint.y);
                 line.setAttribute('stroke', color);
                 line.setAttribute('stroke-width', '2.5');
                 line.setAttribute('stroke-opacity', '0.7');
