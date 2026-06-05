@@ -3,17 +3,11 @@ export interface KrataiConfig {
 	selectedExtensions: string[];   // [".ts", ".tsx", etc.]
 	respectGitignore?: boolean;     // Default: true
 	followSymlinks?: boolean;       // Default: false
-	classTypes?: {                  // Filter by class types
-		showClasses?: boolean;      // Regular classes (default: true)
-		showInterfaces?: boolean;   // Interfaces (default: true)
-		showAbstract?: boolean;     // Abstract classes (default: true)
-		showEnums?: boolean;        // Enums (default: true)
+	classTypeFilters?: {            // Dynamic filters for class types
+		[type: string]: boolean;    // e.g., { "class": true, "interface": false, "module": true }
 	};
-	relationshipTypes?: {           // Filter by relationship types
-		showExtends?: boolean;      // Inheritance (default: true)
-		showImplements?: boolean;   // Interface implementation (default: true)
-		showComposition?: boolean;  // Composition (default: true)
-		showUses?: boolean;         // Usage/dependency (default: true)
+	relationshipTypeFilters?: {     // Dynamic filters for relationship types
+		[type: string]: boolean;    // e.g., { "extends": true, "implements": false }
 	};
 }
 

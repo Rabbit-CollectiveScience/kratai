@@ -87,57 +87,31 @@ export async function generateClassDiagramDirect(context: vscode.ExtensionContex
 			}
 
 			// Apply class type filters
-			const classTypes = config.classTypes || {
-				showClasses: true,
-				showInterfaces: true,
-				showAbstract: true,
-				showEnums: true
-			};
+			const classTypeFilters = config.classTypeFilters || {};
+			const hasFilters = Object.keys(classTypeFilters).length > 0;
 
 			const originalClassCount = diagramData.classes.length;
-			diagramData.classes = diagramData.classes.filter(classInfo => {
-				if (classInfo.isInterface && !classTypes.showInterfaces) {
-					return false;
-				}
-				if (classInfo.isAbstract && !classInfo.isInterface && !classTypes.showAbstract) {
-					return false;
-				}
-				// TODO: Add enum detection logic when available
-				// For now, if it's not interface or abstract, it's a regular class
-				if (!classInfo.isInterface && !classInfo.isAbstract && !classTypes.showClasses) {
-					return false;
-				}
-				return true;
-			});
-
-			console.log(`🔍 Class type filter: ${originalClassCount} → ${diagramData.classes.length} classes`);
+			if (hasFilters) {
+				diagramData.classes = diagramData.classes.filter(classInfo => {
+					const type = classInfo.classType || 'class';
+					// If filter exists for this type, use it; otherwise default to true
+					return classTypeFilters[type] !== false;
+				});
+				console.log(`🔍 Class type filter: ${originalClassCount} → ${diagramData.classes.length} classes`);
+			}
 
 			// Apply relationship type filters
-			const relationshipTypes = config.relationshipTypes || {
-				showExtends: true,
-				showImplements: true,
-				showComposition: true,
-				showUses: true
-			};
+			const relationshipTypeFilters = config.relationshipTypeFilters || {};
+			const hasRelFilters = Object.keys(relationshipTypeFilters).length > 0;
 
 			const originalRelCount = diagramData.relationships.length;
-			diagramData.relationships = diagramData.relationships.filter(rel => {
-				if (rel.type === 'extends' && !relationshipTypes.showExtends) {
-					return false;
-				}
-				if (rel.type === 'implements' && !relationshipTypes.showImplements) {
-					return false;
-				}
-				if (rel.type === 'composition' && !relationshipTypes.showComposition) {
-					return false;
-				}
-				if (rel.type === 'uses' && !relationshipTypes.showUses) {
-					return false;
-				}
-				return true;
-			});
-
-			console.log(`🔍 Relationship filter: ${originalRelCount} → ${diagramData.relationships.length} relationships`);
+			if (hasRelFilters) {
+				diagramData.relationships = diagramData.relationships.filter(rel => {
+					// If filter exists for this type, use it; otherwise default to true
+					return relationshipTypeFilters[rel.type] !== false;
+				});
+				console.log(`🔍 Relationship filter: ${originalRelCount} → ${diagramData.relationships.length} relationships`);
+			}
 
 			// Remove relationships referencing filtered-out classes
 			const classNames = new Set(diagramData.classes.map(c => c.name));

@@ -253,6 +253,7 @@ export class CodeParserService {
 			}
 		}
 
+		const isAbstract = node.modifiers?.some(m => m.kind === ts.SyntaxKind.AbstractKeyword) || false;
 		return {
 			name,
 			filePath,
@@ -260,7 +261,8 @@ export class CodeParserService {
 			methods,
 			extends: extendsClass,
 			implements: implementsInterfaces.length > 0 ? implementsInterfaces : undefined,
-			isAbstract: node.modifiers?.some(m => m.kind === ts.SyntaxKind.AbstractKeyword)
+			isAbstract,
+			classType: isAbstract ? 'abstract' : 'class'
 		};
 	}
 
@@ -296,7 +298,8 @@ export class CodeParserService {
 			properties,
 			methods,
 			implements: implementsInterfaces.length > 0 ? implementsInterfaces : undefined,
-			isInterface: true
+			isInterface: true,
+			classType: 'interface'
 		};
 	}
 
@@ -452,7 +455,9 @@ export class CodeParserService {
 			filePath,
 			properties,
 			methods,
-			isInterface: false
+			isInterface: false,
+			isModule: true,
+			classType: 'module'
 		};
 	}
 

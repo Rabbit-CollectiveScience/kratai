@@ -7,6 +7,8 @@ export interface ClassInfo {
 	implements?: string[];
 	isInterface?: boolean;
 	isAbstract?: boolean;
+	isModule?: boolean;
+	classType?: 'class' | 'interface' | 'abstract' | 'module' | 'enum';
 }
 
 export interface PropertyInfo {
