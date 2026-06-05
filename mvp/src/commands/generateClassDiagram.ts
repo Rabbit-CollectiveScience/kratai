@@ -6,6 +6,8 @@ import { DiagramGeneratorService } from '../services/diagramGeneratorService';
 import { ClassDiagramView } from '../views/classDiagramView';
 import { ConfigService } from '../services/configService';
 import { GitDiffEnricher } from '../services/gitDiffEnricher';
+import { MethodTracerService } from '../services/methodTracerService';
+import { SequenceDiagramView } from '../views/sequenceDiagramView';
 
 export async function generateClassDiagram(context: vscode.ExtensionContext): Promise<void> {
 	// Check if workspace is opened
@@ -154,29 +156,46 @@ export async function generateClassDiagramDirect(context: vscode.ExtensionContex
 
 			// Handle messages from the webview
 			panel.webview.onDidReceiveMessage(
-				message => {
+				async message => {
 					switch (message.command) {
 						case 'openSettings':
 							vscode.commands.executeCommand('kratai.showConfigPanel');
 							break;
 						case 'openMethodSequence':
-							// Open a new tab with sequence diagram
-							const sequencePanel = vscode.window.createWebviewPanel(
-								'krataiSequenceDiagram',
-								`🔄 ${message.className}.${message.methodName}()`,
-								vscode.ViewColumn.Two,
-								{
-									enableScripts: true,
-									retainContextWhenHidden: true
-								}
-							);
-							
-							// For now, show a blank page with placeholder
-							sequencePanel.webview.html = generateSequenceDiagramPlaceholder(
-								message.className,
-								message.methodName,
-								message.filePath
-							);
+							// Trace method calls
+							vscode.window.withProgress({
+								location: vscode.ProgressLocation.Notification,
+								title: `Tracing ${message.className}.${message.methodName}()...`,
+								cancellable: false
+							}, async () => {
+								const sequenceData = MethodTracerService.traceMethod(
+									message.className,
+									message.methodName,
+									message.filePath,
+									workspacePath,
+									diagramData,
+									10 // max depth
+								);
+								
+								// Open a new tab with sequence diagram
+								const sequencePanel = vscode.window.createWebviewPanel(
+									'krataiSequenceDiagram',
+									`🔄 ${message.className}.${message.methodName}()`,
+									vscode.ViewColumn.Two,
+									{
+										enableScripts: true,
+										retainContextWhenHidden: true
+									}
+								);
+								
+								// Generate and show sequence diagram
+								sequencePanel.webview.html = SequenceDiagramView.generate(
+									message.className,
+									message.methodName,
+									message.filePath,
+									sequenceData
+								);
+							});
 							break;
 					}
 				},
@@ -192,105 +211,4 @@ export async function generateClassDiagramDirect(context: vscode.ExtensionContex
 	} catch (error) {
 		vscode.window.showErrorMessage(`Error generating diagram: ${error}`);
 	}
-}
-
-// Helper function to generate placeholder HTML for sequence diagram
-function generateSequenceDiagramPlaceholder(className: string, methodName: string, filePath: string): string {
-	return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sequence Diagram - ${className}.${methodName}()</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
-            background: #f5f5f5;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-        .header {
-            background: white;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            border-bottom: 2px solid #333;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 1.5em;
-            color: #333;
-            font-weight: 600;
-        }
-        .header p {
-            margin: 5px 0 0 0;
-            color: #666;
-            font-size: 0.95em;
-        }
-        .content {
-            flex: 1;
-            padding: 40px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-        .placeholder {
-            text-align: center;
-            max-width: 600px;
-        }
-        .placeholder h2 {
-            color: #333;
-            margin-bottom: 20px;
-        }
-        .placeholder p {
-            color: #666;
-            line-height: 1.6;
-        }
-        .info-box {
-            background: white;
-            padding: 20px;
-            border: 2px solid #333;
-            border-radius: 4px;
-            margin-top: 20px;
-            text-align: left;
-        }
-        .info-box h3 {
-            margin: 0 0 10px 0;
-            font-size: 1em;
-            color: #333;
-        }
-        .info-box p {
-            margin: 5px 0;
-            font-size: 0.9em;
-        }
-        .info-label {
-            font-weight: 600;
-            color: #666;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>🔄 Sequence Diagram</h1>
-        <p>${className}.${methodName}()</p>
-    </div>
-    
-    <div class="content">
-        <div class="placeholder">
-            <h2>Sequence Diagram View</h2>
-            <p>This will show the sequence diagram for the selected method.</p>
-            
-            <div class="info-box">
-                <h3>Method Information</h3>
-                <p><span class="info-label">Class:</span> ${className}</p>
-                <p><span class="info-label">Method:</span> ${methodName}()</p>
-                <p><span class="info-label">File:</span> ${filePath}</p>
-            </div>
-        </div>
-    </div>
-</body>
-</html>`;
 }
