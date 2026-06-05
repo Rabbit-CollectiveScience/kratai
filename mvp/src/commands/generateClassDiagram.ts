@@ -86,8 +86,69 @@ export async function generateClassDiagramDirect(context: vscode.ExtensionContex
 				console.log(`🔧 Deduplicated: ${originalCount} → ${diagramData.classes.length} classes (removed ${originalCount - diagramData.classes.length} duplicates)`);
 			}
 
+			// Apply class type filters
+			const classTypes = config.classTypes || {
+				showClasses: true,
+				showInterfaces: true,
+				showAbstract: true,
+				showEnums: true
+			};
+
+			const originalClassCount = diagramData.classes.length;
+			diagramData.classes = diagramData.classes.filter(classInfo => {
+				if (classInfo.isInterface && !classTypes.showInterfaces) {
+					return false;
+				}
+				if (classInfo.isAbstract && !classInfo.isInterface && !classTypes.showAbstract) {
+					return false;
+				}
+				// TODO: Add enum detection logic when available
+				// For now, if it's not interface or abstract, it's a regular class
+				if (!classInfo.isInterface && !classInfo.isAbstract && !classTypes.showClasses) {
+					return false;
+				}
+				return true;
+			});
+
+			console.log(`🔍 Class type filter: ${originalClassCount} → ${diagramData.classes.length} classes`);
+
+			// Apply relationship type filters
+			const relationshipTypes = config.relationshipTypes || {
+				showExtends: true,
+				showImplements: true,
+				showComposition: true,
+				showUses: true
+			};
+
+			const originalRelCount = diagramData.relationships.length;
+			diagramData.relationships = diagramData.relationships.filter(rel => {
+				if (rel.type === 'extends' && !relationshipTypes.showExtends) {
+					return false;
+				}
+				if (rel.type === 'implements' && !relationshipTypes.showImplements) {
+					return false;
+				}
+				if (rel.type === 'composition' && !relationshipTypes.showComposition) {
+					return false;
+				}
+				if (rel.type === 'uses' && !relationshipTypes.showUses) {
+					return false;
+				}
+				return true;
+			});
+
+			console.log(`🔍 Relationship filter: ${originalRelCount} → ${diagramData.relationships.length} relationships`);
+
+			// Remove relationships referencing filtered-out classes
+			const classNames = new Set(diagramData.classes.map(c => c.name));
+			diagramData.relationships = diagramData.relationships.filter(rel => 
+				classNames.has(rel.from) && classNames.has(rel.to)
+			);
+
+			console.log(`🔍 Cleaned relationships: ${diagramData.relationships.length} relationships after removing orphans`);
+
 			if (diagramData.classes.length === 0) {
-				vscode.window.showWarningMessage('No classes found in src folder!');
+				vscode.window.showWarningMessage('No classes match the selected filters!');
 				return;
 			}
 
