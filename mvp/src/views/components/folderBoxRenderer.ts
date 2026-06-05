@@ -43,7 +43,7 @@ export class FolderBoxRenderer {
 			<div class="folder-container" data-folder="${safeFolderPath}" data-depth="${depth}" style="
 				margin: ${depth === 0 ? '20px' : '10px'};
 				border: 2px solid #333;
-				background: #fafafa;
+				background: transparent;
 			">
 				<!-- Folder Header -->
 				<div class="folder-header" style="

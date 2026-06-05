@@ -38,7 +38,10 @@ export class ClassDiagramView {
 		folderHTML: string,
 		edges: ReactFlowEdge[]
 	): string {
-		const edgesJSON = JSON.stringify(edges).replace(/'/g, '&#039;').replace(/"/g, '&quot;');
+		// Properly encode edges for JavaScript embedding
+		const edgesJSON = JSON.stringify(edges)
+			.replace(/\\/g, '\\\\')
+			.replace(/'/g, "\\'");
 		
 		return `<!DOCTYPE html>
 <html lang="en">
@@ -85,30 +88,29 @@ export class ClassDiagramView {
             font-size: 0.9em;
             font-weight: 500;
         }
+        .uml-box {
+            cursor: pointer;
+            background: white;
+            position: relative;
+        }
         .diagram-container {
+            position: relative;
             padding: 20px;
             max-width: 100%;
             overflow-x: auto;
         }
-        .uml-box {
-            cursor: pointer;
-        }
         #relationship-svg {
-            position: fixed;
+            position: absolute;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
             pointer-events: none;
             z-index: 1;
         }
-        .diagram-container {
+        .folder-container {
             position: relative;
             z-index: 2;
-        }
-        .folder-container, .uml-box {
-            position: relative;
-            z-index: 3;
         }
         .zoom-controls {
             position: fixed;
@@ -144,8 +146,8 @@ export class ClassDiagramView {
             <h1>📊 Hierarchical Class Diagram (CSS Grid)</h1>
             <p>${workspaceName} • ${classCount} classes • ${folderCount} folders</p>
         </div>
-        <div class="stats">
-            ${edgeCount} relationships
+        <div class="stats" id="stats">
+            <span id="relation-status">🔗 ${edgeCount} relationships</span>
         </div>
     </div>
     
@@ -153,18 +155,19 @@ export class ClassDiagramView {
         <button onclick="zoomIn()">🔍 Zoom In</button>
         <button onclick="zoomOut()">🔍 Zoom Out</button>
         <button onclick="resetZoom()">↺ Reset</button>
+        <button onclick="drawRelationships()">🔗 Redraw Lines</button>
     </div>
     
-    <svg id="relationship-svg"></svg>
-    
     <div class="diagram-container" id="diagram">
+        <svg id="relationship-svg"></svg>
         ${folderHTML}
     </div>
     
     <script>
         let EDGES = [];
         try {
-            EDGES = JSON.parse('${edgesJSON}');
+            const rawJSON = '${edgesJSON}';
+            EDGES = JSON.parse(rawJSON);
             console.log('✅ Parsed', EDGES.length, 'relationships');
         } catch (e) {
             console.error('❌ Failed to parse edges:', e);
@@ -198,13 +201,7 @@ export class ClassDiagramView {
             console.log('=== CSS Grid Diagram Loaded ===');
             console.log('Total classes:', document.querySelectorAll('.uml-box').length);
             console.log('Total folders:', document.querySelectorAll('.folder-container').length);
-            console.log('Total relationships to draw:', EDGES.length);
-            
-            if (EDGES.length > 0) {
-                console.log('Sample edge:', EDGES[0]);
-            }
-            
-            console.log('✅ Drawing relationship lines...');
+            console.log('Total relationships:', EDGES.length);
             
             // Draw lines after layout is complete
             setTimeout(drawRelationships, 500);
@@ -212,18 +209,27 @@ export class ClassDiagramView {
         
         function drawRelationships() {
             const svg = document.getElementById('relationship-svg');
+            const container = document.getElementById('diagram');
             
-            // Set SVG size to viewport
-            svg.setAttribute('width', window.innerWidth);
-            svg.setAttribute('height', document.documentElement.scrollHeight);
+            if (!svg || !container) {
+                console.error('SVG or container not found');
+                return;
+            }
+            
+            // Set SVG size to match container's scroll dimensions
+            svg.setAttribute('width', container.scrollWidth);
+            svg.setAttribute('height', container.scrollHeight);
             
             // Clear existing lines
             svg.innerHTML = '';
             
-            console.log('🔍 Attempting to draw', EDGES.length, 'relationships');
+            console.log('🔍 Drawing', EDGES.length, 'relationships...');
             
             let drawnCount = 0;
             let skippedCount = 0;
+            
+            // Get container's position for offset calculation
+            const containerRect = container.getBoundingClientRect();
             
             EDGES.forEach(edge => {
                 const sourceBox = document.querySelector('[data-class="' + CSS.escape(edge.source) + '"]');
@@ -231,18 +237,18 @@ export class ClassDiagramView {
                 
                 if (!sourceBox || !targetBox) {
                     skippedCount++;
-                    console.log('⚠️  Skipped:', edge.source, '->', edge.target, '(element not found)');
                     return;
                 }
                 
+                // Get positions relative to viewport
                 const sourceRect = sourceBox.getBoundingClientRect();
                 const targetRect = targetBox.getBoundingClientRect();
                 
-                // Calculate center points in viewport coordinates
-                const x1 = sourceRect.left + sourceRect.width / 2 + window.scrollX;
-                const y1 = sourceRect.top + sourceRect.height / 2 + window.scrollY;
-                const x2 = targetRect.left + targetRect.width / 2 + window.scrollX;
-                const y2 = targetRect.top + targetRect.height / 2 + window.scrollY;
+                // Convert to container-relative coordinates
+                const x1 = sourceRect.left - containerRect.left + sourceRect.width / 2 + container.scrollLeft;
+                const y1 = sourceRect.top - containerRect.top + sourceRect.height / 2 + container.scrollTop;
+                const x2 = targetRect.left - containerRect.left + targetRect.width / 2 + container.scrollLeft;
+                const y2 = targetRect.top - containerRect.top + targetRect.height / 2 + container.scrollTop;
                 
                 // Determine line color based on relationship type
                 const type = edge.label || 'uses';
@@ -258,19 +264,58 @@ export class ClassDiagramView {
                 line.setAttribute('x2', x2);
                 line.setAttribute('y2', y2);
                 line.setAttribute('stroke', color);
-                line.setAttribute('stroke-width', '2');
-                line.setAttribute('opacity', '0.6');
+                line.setAttribute('stroke-width', '2.5');
+                line.setAttribute('stroke-opacity', '0.7');
+                
+                // Add arrow marker
+                const markerId = 'arrow-' + type;
+                if (!document.getElementById(markerId)) {
+                    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+                    const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                    marker.setAttribute('id', markerId);
+                    marker.setAttribute('markerWidth', '10');
+                    marker.setAttribute('markerHeight', '10');
+                    marker.setAttribute('refX', '9');
+                    marker.setAttribute('refY', '3');
+                    marker.setAttribute('orient', 'auto');
+                    marker.setAttribute('markerUnits', 'strokeWidth');
+                    
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', 'M0,0 L0,6 L9,3 z');
+                    path.setAttribute('fill', color);
+                    
+                    marker.appendChild(path);
+                    defs.appendChild(marker);
+                    svg.appendChild(defs);
+                }
+                
+                line.setAttribute('marker-end', 'url(#' + markerId + ')');
                 
                 svg.appendChild(line);
                 drawnCount++;
             });
             
-            console.log(\`✅ Drew \${drawnCount} relationship lines\`);
-            console.log(\`⚠️  Skipped \${skippedCount} relationships (classes not found)\`);
+            console.log(\`✅ Drew \${drawnCount} lines, skipped \${skippedCount}\`);
+            
+            // Update stats display
+            const statusEl = document.getElementById('relation-status');
+            if (statusEl) {
+                if (drawnCount > 0) {
+                    statusEl.textContent = \`✅ \${drawnCount} relationship lines drawn\`;
+                    statusEl.style.color = '#27ae60';
+                } else {
+                    statusEl.textContent = \`⚠️ No lines drawn (\${skippedCount} relationships)\`;
+                    statusEl.style.color = '#e74c3c';
+                }
+            }
         }
         
-        // Redraw lines on window resize
+        // Redraw lines on window resize or container scroll
         window.addEventListener('resize', function() {
+            setTimeout(drawRelationships, 200);
+        });
+        
+        document.getElementById('diagram').addEventListener('scroll', function() {
             setTimeout(drawRelationships, 100);
         });
     </script>
