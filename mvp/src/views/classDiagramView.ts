@@ -92,6 +92,7 @@ export class ClassDiagramView {
             cursor: pointer;
             background: white;
             position: relative;
+            z-index: 10;
         }
         .diagram-container {
             position: relative;
@@ -106,11 +107,14 @@ export class ClassDiagramView {
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: 1;
+            z-index: 5;
         }
         .folder-container {
             position: relative;
-            z-index: 2;
+        }
+        .folder-header {
+            position: relative;
+            z-index: 1;
         }
         .zoom-controls {
             position: fixed;
