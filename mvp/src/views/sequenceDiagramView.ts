@@ -191,9 +191,9 @@ export class SequenceDiagramView {
 			.forEach(actor => actors.push(actor));
 		
 		const actorCount = actors.length;
-		const actorWidth = 220; // Width for each actor column
+		const actorWidth = 250; // Width for each actor column
 		const messageHeight = 70; // Vertical space per message
-		const leftMargin = 80; // Left margin
+		const leftMargin = 40; // Left margin
 		
 		// Calculate positions for each actor (centered on their lifeline)
 		const actorPositions = new Map<string, number>();
@@ -309,7 +309,12 @@ export class SequenceDiagramView {
 				</svg>
 			</div>
 			<script>
-				let currentZoom = 1;
+				let currentZoom = 1.2;
+				
+				// Apply initial zoom on load
+				window.addEventListener('load', function() {
+					applyZoom();
+				});
 				
 				function zoomIn() {
 					currentZoom = Math.min(currentZoom + 0.2, 3);
@@ -322,7 +327,7 @@ export class SequenceDiagramView {
 				}
 				
 				function resetZoom() {
-					currentZoom = 1;
+					currentZoom = 1.2;
 					applyZoom();
 				}
 				
