@@ -58,16 +58,13 @@ export class SequenceDiagramView {
         }
         .content {
             position: relative;
-            padding: 20px;
+            padding: 0;
             overflow: auto;
+            background: #f5f5f5;
         }
         .sequence-diagram {
             width: 100%;
             min-height: 400px;
-            background: white;
-            border: 2px solid #333;
-            border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
         .sequence-diagram svg {
             width: 100%;
@@ -161,11 +158,25 @@ export class SequenceDiagramView {
 			`;
 		}
 		
-		const actors = Array.from(sequenceData.actors).sort();
+		// Ensure starting class is first, then sort the rest
+		const actorsArray = Array.from(sequenceData.actors);
+		const actors: string[] = [];
+		
+		// Add starting class first
+		if (actorsArray.includes(startClass)) {
+			actors.push(startClass);
+		}
+		
+		// Add remaining actors sorted
+		actorsArray
+			.filter(actor => actor !== startClass)
+			.sort()
+			.forEach(actor => actors.push(actor));
+		
 		const actorCount = actors.length;
-		const actorWidth = 200; // Width for each actor column
+		const actorWidth = 220; // Width for each actor column
 		const messageHeight = 70; // Vertical space per message
-		const leftMargin = 100; // Left margin
+		const leftMargin = 80; // Left margin
 		
 		// Calculate positions for each actor (centered on their lifeline)
 		const actorPositions = new Map<string, number>();
@@ -176,7 +187,7 @@ export class SequenceDiagramView {
 		
 		// Calculate total dimensions
 		const totalHeight = sequenceData.calls.length * messageHeight + 300;
-		const diagramWidth = Math.max(actorCount * actorWidth + leftMargin * 2, 1000);
+		const diagramWidth = actorCount * actorWidth + leftMargin * 2;
 		
 		// Generate SVG content
 		let svgContent = '';
