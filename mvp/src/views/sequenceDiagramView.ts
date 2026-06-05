@@ -209,7 +209,7 @@ export class SequenceDiagramView {
 			const displayName = actor.length > 20 ? actor.substring(0, 18) + '...' : actor;
 			
 			svgContent += `
-				<rect x="${boxX}" y="20" width="${boxWidth}" height="60" fill="white" stroke="#333" stroke-width="2" rx="4"/>
+				<rect x="${boxX}" y="20" width="${boxWidth}" height="60" fill="white" stroke="#333" stroke-width="2"/>
 				<text x="${xPos}" y="55" text-anchor="middle" class="actor-text" title="${this.escapeHtml(actor)}">${this.escapeHtml(displayName)}</text>
 			`;
 		});
@@ -235,7 +235,7 @@ export class SequenceDiagramView {
 					<polygon points="${fromX},${yPos + 30 - 4} ${fromX - 5},${yPos + 30} ${fromX},${yPos + 30 + 4}" fill="#333"/>
 					
 					<!-- Label -->
-					<rect x="${fromX + 10}" y="${yPos - 15}" width="100" height="22" fill="white" stroke="#666" stroke-width="1" rx="3"/>
+				<rect x="${fromX + 10}" y="${yPos - 15}" width="100" height="22" fill="white" stroke="#666" stroke-width="1"/>
 					<text x="${fromX + 15}" y="${yPos}" class="message-number">${messageNumber}.</text>
 					<text x="${fromX + 28}" y="${yPos}" class="message-text" title="${this.escapeHtml(call.toMethod)}()">${this.escapeHtml(methodDisplay)}()</text>
 				`;
@@ -250,16 +250,16 @@ export class SequenceDiagramView {
 					<polygon points="${toX - (direction * 8)},${yPos - 5} ${toX},${yPos} ${toX - (direction * 8)},${yPos + 5}" class="arrowhead"/>
 					
 					<!-- Message number and label -->
-					<rect x="${midX - 60}" y="${yPos - 18}" width="120" height="22" fill="white" stroke="#666" stroke-width="1" rx="3"/>
+					<rect x="${midX - 60}" y="${yPos - 18}" width="120" height="22" fill="white" stroke="#666" stroke-width="1"/>
 					<text x="${midX - 55}" y="${yPos - 2}" class="message-number">${messageNumber}.</text>
 					<text x="${midX - 40}" y="${yPos - 2}" class="message-text" title="${this.escapeHtml(call.toMethod)}()">${this.escapeHtml(methodDisplay)}()</text>
 					
 					<!-- Activation bar on target -->
-					<rect x="${toX - 6}" y="${yPos + 2}" width="12" height="${messageHeight - 25}" fill="#e8e8e8" stroke="#333" stroke-width="1.5"/>
+					<rect x="${toX - 6}" y="${yPos}" width="12" height="${messageHeight - 25}" fill="#e8e8e8" stroke="#333" stroke-width="1.5"/>
 				`;
 				
 				// Return arrow (dashed line)
-				const returnY = yPos + messageHeight - 20;
+				const returnY = yPos + messageHeight - 25;
 				svgContent += `
 					<line x1="${toX}" y1="${returnY}" x2="${fromX + (direction * 8)}" y2="${returnY}" class="return-arrow"/>
 					<polygon points="${fromX + (direction * 8)},${returnY - 4} ${fromX},${returnY} ${fromX + (direction * 8)},${returnY + 4}" class="return-arrowhead"/>
@@ -280,7 +280,7 @@ export class SequenceDiagramView {
 			const displayName = actor.length > 20 ? actor.substring(0, 18) + '...' : actor;
 			
 			svgContent += `
-				<rect x="${boxX}" y="${boxY}" width="${boxWidth}" height="60" fill="white" stroke="#333" stroke-width="2" rx="4"/>
+				<rect x="${boxX}" y="${boxY}" width="${boxWidth}" height="60" fill="white" stroke="#333" stroke-width="2"/>
 				<text x="${xPos}" y="${boxY + 35}" text-anchor="middle" class="actor-text" title="${this.escapeHtml(actor)}">${this.escapeHtml(displayName)}</text>
 			`;
 		});
