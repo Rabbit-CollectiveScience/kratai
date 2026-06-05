@@ -60,7 +60,7 @@ export async function showConfigPanel(context: vscode.ExtensionContext): Promise
 					// Optionally generate diagram immediately
 					if (message.generateDiagram) {
 						panel.dispose();
-						vscode.commands.executeCommand('kratai.generateClassDiagram');
+						vscode.commands.executeCommand('kratai.generateClassDiagramDirect');
 					}
 					break;
 			}

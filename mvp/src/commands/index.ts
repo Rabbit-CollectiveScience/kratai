@@ -1,3 +1,3 @@
 export { showGitChanges } from './showGitChanges';
-export { generateClassDiagram } from './generateClassDiagram';
+export { generateClassDiagram, generateClassDiagramDirect } from './generateClassDiagram';
 export { showConfigPanel } from './showConfigPanel';

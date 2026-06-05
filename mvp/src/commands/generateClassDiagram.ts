@@ -1,10 +1,42 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
 import { CodeParserService } from '../services/codeParserService';
 import { DiagramGeneratorService } from '../services/diagramGeneratorService';
 import { ClassDiagramView } from '../views/classDiagramView';
 import { ConfigService } from '../services/configService';
 
 export async function generateClassDiagram(context: vscode.ExtensionContext): Promise<void> {
+	// Check if workspace is opened
+	if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+		vscode.window.showErrorMessage('No workspace folder is open!');
+		return;
+	}
+
+	const workspaceFolder = vscode.workspace.workspaceFolders[0];
+	const workspacePath = workspaceFolder.uri.fsPath;
+	const workspaceName = workspaceFolder.name;
+
+	try {
+		// Check if config file exists
+		const configPath = path.join(workspacePath, '.vscode/kratai.json');
+		const configExists = fs.existsSync(configPath);
+
+		if (configExists) {
+			// Config exists, generate diagram directly
+			await generateClassDiagramDirect(context);
+		} else {
+			// No config, show config panel first to let user review/modify before generating
+			vscode.commands.executeCommand('kratai.showConfigPanel');
+		}
+
+	} catch (error) {
+		vscode.window.showErrorMessage(`Error loading configuration: ${error}`);
+	}
+}
+
+// New function for direct diagram generation (called from config panel)
+export async function generateClassDiagramDirect(context: vscode.ExtensionContext): Promise<void> {
 	// Check if workspace is opened
 	if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
 		vscode.window.showErrorMessage('No workspace folder is open!');

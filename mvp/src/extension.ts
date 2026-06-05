@@ -1,7 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import { showGitChanges, generateClassDiagram, showConfigPanel } from './commands';
+import { showGitChanges, generateClassDiagram, generateClassDiagramDirect, showConfigPanel } from './commands';
 import { KrataiTreeProvider } from './views/krataiTreeProvider';
 
 // This method is called when your extension is activated
@@ -33,6 +33,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('kratai.showFileSummary', () => showGitChanges(context)),
 		vscode.commands.registerCommand('kratai.generateClassDiagram', () => generateClassDiagram(context)),
+		vscode.commands.registerCommand('kratai.generateClassDiagramDirect', () => generateClassDiagramDirect(context)),
 		vscode.commands.registerCommand('kratai.showConfigPanel', () => showConfigPanel(context))
 	);
 }
