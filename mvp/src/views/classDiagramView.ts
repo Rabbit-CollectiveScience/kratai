@@ -141,6 +141,9 @@ export class ClassDiagramView {
             position: relative;
             z-index: 1;
         }
+        .method-item:hover {
+            background: #e0e0e0 !important;
+        }
 
     </style>
 </head>
@@ -181,6 +184,15 @@ export class ClassDiagramView {
         function openSettings() {
             vscode.postMessage({
                 command: 'openSettings'
+            });
+        }
+        
+        function openMethodSequence(className, methodName, filePath) {
+            vscode.postMessage({
+                command: 'openMethodSequence',
+                className: className,
+                methodName: methodName,
+                filePath: filePath
             });
         }
         

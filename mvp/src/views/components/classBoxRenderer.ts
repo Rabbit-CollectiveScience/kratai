@@ -121,10 +121,14 @@ export class ClassBoxRenderer {
 			const safeParams = this.escapeHtml(this.truncateParams(method.parameters));
 			const paramNames = method.parameters.map(p => this.escapeHtml(p.name)).join(', ');
 			const changeBgColor = this.getMemberChangeStatusBgColor(method.changeStatus);
+			const safeClassName = this.escapeHtml(classInfo.name);
+			const safeFilePath = this.escapeHtml(classInfo.filePath);
 			
 			return `
-			<div style="padding: 3px 8px; color: #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; background: ${changeBgColor};" 
-				 title="${safeName}(${paramNames})">
+			<div class="method-item" 
+				 style="padding: 3px 8px; color: #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; background: ${changeBgColor}; cursor: pointer;" 
+				 title="${safeName}(${paramNames})"
+				 onclick="openMethodSequence('${safeClassName}', '${safeName}', '${safeFilePath}')">
 				<span style="color: ${this.getVisibilityColor(method.visibility)};">
 					${this.getVisibilitySymbol(method.visibility)}
 				</span>
