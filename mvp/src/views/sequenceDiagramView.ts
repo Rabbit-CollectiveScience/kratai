@@ -195,7 +195,8 @@ export class SequenceDiagramView {
 		// Generate lifelines (vertical dashed lines from each actor)
 		actors.forEach(actor => {
 			const xPos = actorPositions.get(actor)!;
-			svgContent += `<line x1="${xPos}" y1="100" x2="${xPos}" y2="${totalHeight}" class="lifeline"/>`;
+			// Start at bottom of top actor box (y=80) and end at top of bottom actor box
+			svgContent += `<line x1="${xPos}" y1="80" x2="${xPos}" y2="${totalHeight - 80}" class="lifeline"/>`;
 		});
 		
 		// Generate actor boxes at top (inside SVG)
