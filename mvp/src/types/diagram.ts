@@ -20,6 +20,7 @@ export interface PropertyInfo {
 	isReadonly?: boolean;
 	changeStatus?: 'added' | 'deleted' | 'modified' | 'unchanged';
 	lineNumber?: number;
+	endLineNumber?: number;
 }
 
 export interface MethodInfo {
@@ -31,6 +32,7 @@ export interface MethodInfo {
 	isAsync?: boolean;
 	changeStatus?: 'added' | 'deleted' | 'modified' | 'unchanged';
 	lineNumber?: number;
+	endLineNumber?: number;
 }
 
 export interface ParameterInfo {

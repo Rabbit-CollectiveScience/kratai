@@ -161,6 +161,10 @@ export class GitDiffEnricher {
 		fileChange: { addedLines: Set<number>; deletedLines: Set<number> },
 		oldClass?: ClassInfo
 	): boolean {
+		// Sort methods by line number for proper range detection
+		const sortedMethods = [...classInfo.methods].sort((a, b) => 
+			(a.lineNumber || 0) - (b.lineNumber || 0)
+		);
 		let hasChanges = false;
 
 		console.log(`    📝 File has ${fileChange.addedLines.size} added lines, ${fileChange.deletedLines.size} deleted lines`);
@@ -213,12 +217,16 @@ export class GitDiffEnricher {
 					prop.changeStatus = 'deleted';
 					hasChanges = true;
 					console.log(`        ❌ DELETED`);
-				} else if (this.isLineNearChange(prop.lineNumber, fileChange)) {
-					prop.changeStatus = 'modified';
-					hasChanges = true;
-					console.log(`        🔄 MODIFIED (near change)`);
 				} else {
-					prop.changeStatus = 'unchanged';
+					// For properties, check a small range (they're usually single-line)
+					const endLine = prop.lineNumber + 1;
+					if (this.isChangeInRange(prop.lineNumber, endLine, fileChange)) {
+						prop.changeStatus = 'modified';
+						hasChanges = true;
+						console.log(`        🔄 MODIFIED`);
+					} else {
+						prop.changeStatus = 'unchanged';
+					}
 				}
 			} else {
 				prop.changeStatus = 'unchanged';
@@ -227,7 +235,8 @@ export class GitDiffEnricher {
 		}
 
 		// Check methods
-		for (const method of classInfo.methods) {
+		for (let i = 0; i < sortedMethods.length; i++) {
+			const method = sortedMethods[i];
 			// Skip if already marked as deleted
 			if (method.changeStatus === 'deleted') continue;
 			
@@ -241,12 +250,18 @@ export class GitDiffEnricher {
 					method.changeStatus = 'deleted';
 					hasChanges = true;
 					console.log(`        ❌ DELETED`);
-				} else if (this.isLineNearChange(method.lineNumber, fileChange)) {
-					method.changeStatus = 'modified';
-					hasChanges = true;
-					console.log(`        🔄 MODIFIED (near change)`);
 				} else {
-					method.changeStatus = 'unchanged';
+					// Get the next method's line number to determine range
+					const nextMethod = sortedMethods[i + 1];
+					const endLine = nextMethod?.lineNumber || method.lineNumber + 50;
+					
+					if (this.isChangeInRange(method.lineNumber, endLine, fileChange)) {
+						method.changeStatus = 'modified';
+						hasChanges = true;
+						console.log(`        🔄 MODIFIED (change in lines ${method.lineNumber}-${endLine})`);
+					} else {
+						method.changeStatus = 'unchanged';
+					}
 				}
 			} else {
 				method.changeStatus = 'unchanged';
@@ -258,24 +273,16 @@ export class GitDiffEnricher {
 	}
 
 	/**
-	 * Check if a line is near added/deleted lines (within 3 lines)
-	 * This now checks if changes fall INSIDE a method/property (not just near its declaration)
+	 * Check if a change falls within a specific line range (method body)
+	 * Only marks as changed if the change is actually within this member's range
 	 */
-	private static isLineNearChange(
-		lineNumber: number,
+	private static isChangeInRange(
+		startLine: number,
+		endLine: number,
 		fileChange: { addedLines: Set<number>; deletedLines: Set<number> }
 	): boolean {
-		const range = 20; // Check within 20 lines (typical method body size)
-		
-		// Check if any changes are within the method/property body
-		for (let i = lineNumber; i <= lineNumber + range; i++) {
-			if (fileChange.addedLines.has(i) || fileChange.deletedLines.has(i)) {
-				return true;
-			}
-		}
-		
-		// Also check a few lines before (for changes at method signature)
-		for (let i = Math.max(1, lineNumber - 3); i < lineNumber; i++) {
+		// Check if any changes are within this specific range
+		for (let i = startLine; i < endLine; i++) {
 			if (fileChange.addedLines.has(i) || fileChange.deletedLines.has(i)) {
 				return true;
 			}
