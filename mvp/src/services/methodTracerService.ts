@@ -183,7 +183,8 @@ export class MethodTracerService {
 				call.methodName,
 				call.objectName,
 				classInfo,
-				diagramData
+				diagramData,
+				call.previousCall
 			);
 			
 			if (targetClass) {
@@ -262,14 +263,20 @@ export class MethodTracerService {
 	private static extractMethodCalls(methodNode: ts.MethodDeclaration | ts.FunctionDeclaration): Array<{
 		methodName: string;
 		objectName: string | null;
+		previousCall?: { objectName: string | null; methodName: string };
 	}> {
-		const calls: Array<{ methodName: string; objectName: string | null }> = [];
+		const calls: Array<{ 
+			methodName: string; 
+			objectName: string | null;
+			previousCall?: { objectName: string | null; methodName: string };
+		}> = [];
 		
 		const visit = (node: ts.Node) => {
 			// Look for CallExpression (method calls)
 			if (ts.isCallExpression(node)) {
 				let methodName: string | null = null;
 				let objectName: string | null = null;
+				let previousCall: { objectName: string | null; methodName: string } | undefined;
 				
 				// Check if it's a property access (obj.method())
 				if (ts.isPropertyAccessExpression(node.expression)) {
@@ -281,6 +288,21 @@ export class MethodTracerService {
 					} else if (node.expression.expression.kind === ts.SyntaxKind.ThisKeyword) {
 						objectName = 'this';
 					}
+					// Check for chained call (e.g., UserModel.create().toPlainObject())
+					else if (ts.isCallExpression(node.expression.expression)) {
+						const innerCall = node.expression.expression;
+						if (ts.isPropertyAccessExpression(innerCall.expression)) {
+							const innerMethodName = innerCall.expression.name.text;
+							let innerObjectName: string | null = null;
+							
+							if (ts.isIdentifier(innerCall.expression.expression)) {
+								innerObjectName = innerCall.expression.expression.text;
+							}
+							
+							previousCall = { objectName: innerObjectName, methodName: innerMethodName };
+							console.log(`      🔗 Detected chained call: ${innerObjectName}.${innerMethodName}().${methodName}()`);
+						}
+					}
 				}
 				// Check if it's a simple identifier (function())
 				else if (ts.isIdentifier(node.expression)) {
@@ -288,7 +310,7 @@ export class MethodTracerService {
 				}
 				
 				if (methodName) {
-					calls.push({ methodName, objectName });
+					calls.push({ methodName, objectName, previousCall });
 				}
 			}
 			
@@ -309,13 +331,44 @@ export class MethodTracerService {
 		methodName: string,
 		objectName: string | null,
 		currentClass: ClassInfo,
-		diagramData: DiagramData
+		diagramData: DiagramData,
+		previousCall?: { objectName: string | null; methodName: string }
 	): ClassInfo | null {
+		// Handle chained calls - resolve based on the return type of previous call
+		if (previousCall && previousCall.objectName) {
+			const previousClass = diagramData.classes.find(c => c.name === previousCall.objectName);
+			if (previousClass) {
+				const previousMethod = previousClass.methods.find(m => m.name === previousCall.methodName);
+				if (previousMethod) {
+					// The method is called on the return value of previousMethod
+					// Look for the return type
+					const returnType = previousMethod.returnType;
+					const returnClass = diagramData.classes.find(c => 
+						c.name === returnType || returnType.includes(c.name)
+					);
+					
+					if (returnClass && returnClass.methods.some(m => m.name === methodName)) {
+						console.log(`    ℹ️ Resolved chained call: ${previousCall.objectName}.${previousCall.methodName}() returns ${returnClass.name}, calling ${methodName}()`);
+						return returnClass;
+					}
+				}
+			}
+		}
+		
 		// Check if it's a method on the same class (this.method())
 		if (objectName === 'this') {
 			const hasMethod = currentClass.methods.some(m => m.name === methodName);
 			if (hasMethod) {
 				return currentClass;
+			}
+		}
+		
+		// NEW: Check if objectName directly matches a class name (for static calls like UserModel.create())
+		if (objectName) {
+			const directClass = diagramData.classes.find(c => c.name === objectName);
+			if (directClass && directClass.methods.some(m => m.name === methodName)) {
+				console.log(`    ℹ️ Direct class match: ${objectName}.${methodName}()`);
+				return directClass;
 			}
 		}
 		
