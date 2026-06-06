@@ -3,6 +3,7 @@
   "displayName": "kratai",
   "description": "ratai-mvp",
   "version": "0.0.1",
+  "icon": "icon.png",
   "engines": {
     "vscode": "^1.120.0"
   },
@@ -17,7 +18,7 @@
         {
           "id": "kratai-panel",
           "title": "Kratai",
-          "icon": "$(graph)"
+          "icon": "icon.svg"
         }
       ]
     },
