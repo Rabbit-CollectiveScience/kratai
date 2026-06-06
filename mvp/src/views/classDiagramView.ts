@@ -157,7 +157,6 @@ export class ClassDiagramView {
             <button onclick="zoomIn()">🔍 Zoom In</button>
             <button onclick="zoomOut()">🔍 Zoom Out</button>
             <button onclick="resetZoom()">↺ Reset</button>
-            <button class="settings-btn" onclick="openSettings()">⚙️ Settings</button>
         </div>
     </div>
     

@@ -20,88 +20,111 @@ export class GitChangesView {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Git Changes</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            padding: 40px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+        html, body {
             margin: 0;
-            min-height: 100vh;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
         }
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+        body {
+            font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            flex-direction: column;
         }
-        h1 {
-            font-size: 2.5em;
-            margin: 0 0 10px 0;
-            text-align: center;
-            font-weight: 700;
+        .header {
+            flex-shrink: 0;
+            background: white;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-bottom: 2px solid #333;
+            z-index: 1000;
         }
-        .workspace-name {
-            text-align: center;
-            font-size: 1.2em;
-            opacity: 0.9;
-            margin-bottom: 10px;
+        .header h1 {
+            margin: 0;
+            font-size: 1.5em;
+            color: #333;
+            font-weight: 600;
         }
-        .branch-info {
-            text-align: center;
+        .header p {
+            margin: 5px 0 0 0;
+            color: #666;
             font-size: 0.95em;
-            opacity: 0.8;
-            margin-bottom: 30px;
+        }
+        .content {
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+            min-height: 0;
         }
         .summary {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
-            margin: 30px 0;
+            margin-bottom: 30px;
         }
         .summary-card {
-            background: rgba(255, 255, 255, 0.15);
+            background: white;
+            border: 2px solid #333;
             padding: 20px;
-            border-radius: 15px;
             text-align: center;
         }
         .summary-card .number {
             font-size: 2.5em;
             font-weight: bold;
             margin-bottom: 5px;
+            color: #333;
         }
         .summary-card .label {
             font-size: 0.9em;
-            opacity: 0.9;
+            color: #666;
+            font-weight: 500;
         }
-        .changes-list {
-            margin-top: 30px;
+        .summary-card.modified .number { color: #f57c00; }
+        .summary-card.added .number { color: #388e3c; }
+        .summary-card.deleted .number { color: #d32f2f; }
+        .changes-section {
+            background: white;
+            border: 2px solid #333;
+            padding: 20px;
+        }
+        .changes-section h2 {
+            margin: 0 0 20px 0;
+            font-size: 1.2em;
+            color: #333;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
         }
         .change-item {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px 20px;
+            padding: 12px 15px;
             margin: 8px 0;
-            border-radius: 10px;
+            border: 1px solid #ddd;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: transform 0.2s, background 0.2s;
+            transition: background 0.2s;
             border-left: 4px solid transparent;
         }
         .change-item:hover {
-            transform: translateX(5px);
-            background: rgba(255, 255, 255, 0.15);
+            background: #f5f5f5;
         }
-        .change-item.modified { border-left-color: #ffc107; }
-        .change-item.added { border-left-color: #4caf50; }
-        .change-item.deleted { border-left-color: #f44336; }
-        .change-item.renamed { border-left-color: #2196f3; }
+        .change-item.modified { 
+            border-left-color: #f57c00;
+            background: #fff9c4;
+        }
+        .change-item.added { 
+            border-left-color: #388e3c;
+            background: #c8e6c9;
+        }
+        .change-item.deleted { 
+            border-left-color: #d32f2f;
+            background: #ffcdd2;
+        }
         .file-path {
             font-family: 'Courier New', monospace;
-            font-size: 0.95em;
+            font-size: 0.9em;
+            color: #333;
             flex: 1;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -113,48 +136,47 @@ export class GitChangesView {
             align-items: center;
         }
         .status-badge {
-            background: rgba(255, 255, 255, 0.3);
+            background: #333;
+            color: white;
             padding: 4px 12px;
-            border-radius: 12px;
             font-size: 0.85em;
-            font-weight: bold;
+            font-weight: 600;
             text-transform: uppercase;
         }
         .stats-badge {
             font-family: 'Courier New', monospace;
             font-size: 0.9em;
+            font-weight: 600;
         }
-        .additions { color: #4caf50; }
-        .deletions { color: #f44336; }
-        .emoji {
-            font-size: 3em;
-            text-align: center;
-            margin-bottom: 20px;
-        }
+        .additions { color: #388e3c; }
+        .deletions { color: #d32f2f; }
         .no-changes {
             text-align: center;
             padding: 60px 20px;
-            opacity: 0.8;
-            font-size: 1.2em;
+            color: #666;
+            font-size: 1.1em;
+            background: white;
+            border: 2px solid #333;
         }
         .diff-summary {
             text-align: center;
-            margin: 20px 0;
+            margin: 15px 0 20px 0;
             font-size: 1.1em;
+            font-weight: 600;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="emoji">🔄</div>
-        <h1>Git Changes</h1>
-        <div class="workspace-name">📁 ${workspaceName}</div>
-        <div class="branch-info">Comparing: ${currentBranch} ← ${compareTarget}</div>
-        
+    <div class="header">
+        <h1>🔄 Git Changes</h1>
+        <p>${workspaceName} • ${currentBranch} ← ${compareTarget} • ${totalChanges} files changed</p>
+    </div>
+    
+    <div class="content">
         ${totalChanges === 0 ? `
             <div class="no-changes">
-                ✨ No changes detected!<br>
-                Your local branch is up to date with the remote.
+                <h2>✨ No Changes Detected</h2>
+                <p>Your local branch is up to date with the remote.</p>
             </div>
         ` : `
             <div class="summary">
@@ -162,27 +184,27 @@ export class GitChangesView {
                     <div class="number">${totalChanges}</div>
                     <div class="label">Total Changes</div>
                 </div>
-                <div class="summary-card">
-                    <div class="number" style="color: #ffc107;">${modified}</div>
+                <div class="summary-card modified">
+                    <div class="number">${modified}</div>
                     <div class="label">Modified</div>
                 </div>
-                <div class="summary-card">
-                    <div class="number" style="color: #4caf50;">${added}</div>
+                <div class="summary-card added">
+                    <div class="number">${added}</div>
                     <div class="label">Added</div>
                 </div>
-                <div class="summary-card">
-                    <div class="number" style="color: #f44336;">${deleted}</div>
+                <div class="summary-card deleted">
+                    <div class="number">${deleted}</div>
                     <div class="label">Deleted</div>
                 </div>
             </div>
             
             <div class="diff-summary">
-                <span class="additions">++${totalAdditions}</span> /
-                <span class="deletions">--${totalDeletions}</span>
+                <span class="additions">+${totalAdditions}</span> • 
+                <span class="deletions">-${totalDeletions}</span>
             </div>
             
-            <div class="changes-list">
-                <h2 style="text-align: center; margin-bottom: 20px;">Changed Files</h2>
+            <div class="changes-section">
+                <h2>Changed Files</h2>
                 ${changes.map(change => `
                     <div class="change-item ${change.status}">
                         <div class="file-path">${change.path}</div>
