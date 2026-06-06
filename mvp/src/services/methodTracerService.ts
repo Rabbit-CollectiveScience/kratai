@@ -8,6 +8,8 @@ export interface MethodCall {
 	fromMethod: string;
 	toClass: string;
 	toMethod: string;
+	toInstance?: string; // Variable/instance name (e.g., "user", "repo") or undefined for static calls
+	isStatic: boolean;   // true for static calls like UserModel.create(), false for instance.method()
 	depth: number;
 	changeStatus?: 'added' | 'deleted' | 'modified' | 'unchanged';
 }
@@ -37,7 +39,7 @@ export class MethodTracerService {
 		const calls: MethodCall[] = [];
 		const visited = new Set<string>(); // Prevent infinite recursion
 		
-		// Add the starting class as an actor
+		// Add the starting class as an actor (always as a class, not instance)
 		actors.add(className);
 		
 		// Find the class
@@ -67,10 +69,12 @@ export class MethodTracerService {
 			calls,
 			visited,
 			0,
-			maxDepth
+			maxDepth,
+			className  // Starting actor is just the class name
 		);
 		
 		console.log(`✅ Traced ${calls.length} method calls with ${actors.size} actors`);
+		console.log(`📋 Actors:`, Array.from(actors));
 		
 		return {
 			actors,
@@ -91,7 +95,8 @@ export class MethodTracerService {
 		calls: MethodCall[],
 		visited: Set<string>,
 		depth: number,
-		maxDepth: number
+		maxDepth: number,
+		currentActorName: string // The actor name for this recursion level
 	): void {
 		// Check depth limit
 		if (depth >= maxDepth) {
@@ -140,14 +145,18 @@ export class MethodTracerService {
 						const implMethod = implClass.methods.find(m => m.name === method.name);
 						if (implMethod) {
 							console.log(`  → Tracing implementation in ${implClass.name}`);
-							actors.add(implClass.name);
+							const isStatic = implMethod.isStatic || false;
+							const instanceName = isStatic ? implClass.name : `:${implClass.name}`;
+							actors.add(instanceName);
 							
 							// Add call from interface to implementation
 							calls.push({
-								fromClass: classInfo.name,
+								fromClass: currentActorName,  // Use current actor name
 								fromMethod: method.name,
 								toClass: implClass.name,
 								toMethod: implMethod.name,
+								toInstance: undefined,
+								isStatic: isStatic,
 								depth: depth,
 								changeStatus: implMethod.changeStatus || 'unchanged'
 							});
@@ -162,7 +171,8 @@ export class MethodTracerService {
 								calls,
 								visited,
 								depth + 1,
-								maxDepth
+								maxDepth,
+								instanceName  // Pass instance name to recursive call
 							);
 						}
 					}
@@ -188,21 +198,45 @@ export class MethodTracerService {
 			);
 			
 			if (targetClass) {
-				actors.add(targetClass.name);
-				
-				// Find the target method to get its changeStatus
+				// Find the target method to get its changeStatus and check if it's static
 				const targetMethod = targetClass.methods.find(m => m.name === call.methodName);
+				const isStatic = targetMethod?.isStatic || false;
+				
+				// Determine the actual object name (handle chained calls)
+				let actualObjectName = call.objectName;
+				if (!actualObjectName && call.previousCall) {
+					// For chained calls without an explicit object name, use a generated name
+					actualObjectName = `${call.previousCall.methodName}Result`;
+				}
+				
+				// Determine the instance name for actors
+				let instanceName: string;
+				if (isStatic) {
+					// Static call - use class name
+					instanceName = targetClass.name;
+				} else {
+					// Instance call - use variable name + class name
+					if (actualObjectName && actualObjectName !== 'this') {
+						instanceName = `${actualObjectName}:${targetClass.name}`;
+					} else {
+						instanceName = `:${targetClass.name}`; // Anonymous instance
+					}
+				}
+				
+				actors.add(instanceName);
 				
 				calls.push({
-					fromClass: classInfo.name,
+					fromClass: currentActorName,  // Use the current actor name (handles instances)
 					fromMethod: method.name,
 					toClass: targetClass.name,
 					toMethod: call.methodName,
+					toInstance: isStatic ? undefined : (actualObjectName || undefined),
+					isStatic: isStatic,
 					depth: depth,
 					changeStatus: targetMethod?.changeStatus || 'unchanged'
 				});
 				
-				console.log(`    → ${classInfo.name}.${method.name}() calls ${targetClass.name}.${call.methodName}()`);
+				console.log(`    → ${currentActorName}.${method.name}() calls ${instanceName}.${call.methodName}()`);
 				
 				// Recursively trace this method
 				if (targetMethod) {
@@ -215,7 +249,8 @@ export class MethodTracerService {
 						calls,
 						visited,
 						depth + 1,
-						maxDepth
+						maxDepth,
+						instanceName  // Pass the instance name as the current actor
 					);
 				}
 			}

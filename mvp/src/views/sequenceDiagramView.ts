@@ -246,8 +246,21 @@ export class SequenceDiagramView {
 		
 		sequenceData.calls.forEach((call, index) => {
 			const yPos = 140 + index * messageHeight;
-			const fromX = actorPositions.get(call.fromClass)!;
-			const toX = actorPositions.get(call.toClass)!;
+			
+			// Build the correct actor names based on whether it's static or instance call
+			const toActorName = call.isStatic 
+				? call.toClass 
+				: (call.toInstance && call.toInstance !== 'this' ? `${call.toInstance}:${call.toClass}` : `:${call.toClass}`);
+			
+			const fromX = actorPositions.get(call.fromClass);
+			const toX = actorPositions.get(toActorName);
+			
+			// Skip if positions not found (defensive check)
+			if (fromX === undefined || toX === undefined) {
+				console.warn(`Skipping call ${call.fromClass}.${call.fromMethod} -> ${toActorName}.${call.toMethod}: missing actor positions`);
+				console.warn(`  Available actors:`, Array.from(actorPositions.keys()));
+				return;
+			}
 			
 			// Truncate long method names
 			const methodDisplay = call.toMethod.length > 18 ? call.toMethod.substring(0, 16) + '..' : call.toMethod;
