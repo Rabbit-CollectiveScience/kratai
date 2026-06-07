@@ -218,8 +218,8 @@ export class GitDiffEnricher {
 					hasChanges = true;
 					console.log(`        ❌ DELETED`);
 				} else {
-					// For properties, check a small range (they're usually single-line)
-					const endLine = prop.lineNumber + 1;
+					// For properties, check the actual range or default to single line
+					const endLine = prop.endLineNumber || prop.lineNumber + 1;
 					if (this.isChangeInRange(prop.lineNumber, endLine, fileChange)) {
 						prop.changeStatus = 'modified';
 						hasChanges = true;
@@ -251,9 +251,14 @@ export class GitDiffEnricher {
 					hasChanges = true;
 					console.log(`        ❌ DELETED`);
 				} else {
-					// Get the next method's line number to determine range
-					const nextMethod = sortedMethods[i + 1];
-					const endLine = nextMethod?.lineNumber || method.lineNumber + 50;
+					// Use actual end line from AST, or next method's start, or reasonable default
+					let endLine: number;
+					if (method.endLineNumber) {
+						endLine = method.endLineNumber;
+					} else {
+						const nextMethod = sortedMethods[i + 1];
+						endLine = nextMethod?.lineNumber || method.lineNumber + 200;
+					}
 					
 					if (this.isChangeInRange(method.lineNumber, endLine, fileChange)) {
 						method.changeStatus = 'modified';

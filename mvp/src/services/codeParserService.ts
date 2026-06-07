@@ -310,22 +310,24 @@ export class CodeParserService {
 		const isStatic = node.modifiers?.some(m => m.kind === ts.SyntaxKind.StaticKeyword) || false;
 		const isReadonly = node.modifiers?.some(m => m.kind === ts.SyntaxKind.ReadonlyKeyword) || false;
 		
-		// Get line number for git diff
+		// Get line number range for git diff
 		const sourceFile = node.getSourceFile();
 		const lineNumber = sourceFile ? sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1 : undefined;
+		const endLineNumber = sourceFile ? sourceFile.getLineAndCharacterOfPosition(node.getEnd()).line + 1 : undefined;
 
-		return { name, type, visibility, isStatic, isReadonly, lineNumber };
+		return { name, type, visibility, isStatic, isReadonly, lineNumber, endLineNumber };
 	}
 
 	private static extractPropertySignature(node: ts.PropertySignature): PropertyInfo {
 		const name = node.name.getText();
 		const type = node.type?.getText() || 'any';
 		
-		// Get line number for git diff
+		// Get line number range for git diff
 		const sourceFile = node.getSourceFile();
 		const lineNumber = sourceFile ? sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1 : undefined;
+		const endLineNumber = sourceFile ? sourceFile.getLineAndCharacterOfPosition(node.getEnd()).line + 1 : undefined;
 
-		return { name, type, visibility: 'public', lineNumber };
+		return { name, type, visibility: 'public', lineNumber, endLineNumber };
 	}
 
 	private static extractMethod(node: ts.MethodDeclaration): MethodInfo {
@@ -340,11 +342,12 @@ export class CodeParserService {
 		const isStatic = node.modifiers?.some(m => m.kind === ts.SyntaxKind.StaticKeyword) || false;
 		const isAsync = node.modifiers?.some(m => m.kind === ts.SyntaxKind.AsyncKeyword) || false;
 		
-		// Get line number for git diff
+		// Get line number range for git diff
 		const sourceFile = node.getSourceFile();
 		const lineNumber = sourceFile ? sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1 : undefined;
+		const endLineNumber = sourceFile ? sourceFile.getLineAndCharacterOfPosition(node.getEnd()).line + 1 : undefined;
 
-		return { name, parameters, returnType, visibility, isStatic, isAsync, lineNumber };
+		return { name, parameters, returnType, visibility, isStatic, isAsync, lineNumber, endLineNumber };
 	}
 
 	private static extractMethodSignature(node: ts.MethodSignature): MethodInfo {
@@ -356,11 +359,12 @@ export class CodeParserService {
 		}));
 		const returnType = node.type?.getText() || 'void';
 		
-		// Get line number for git diff
+		// Get line number range for git diff
 		const sourceFile = node.getSourceFile();
 		const lineNumber = sourceFile ? sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1 : undefined;
+		const endLineNumber = sourceFile ? sourceFile.getLineAndCharacterOfPosition(node.getEnd()).line + 1 : undefined;
 
-		return { name, parameters, returnType, visibility: 'public', lineNumber };
+		return { name, parameters, returnType, visibility: 'public', lineNumber, endLineNumber };
 	}
 
 	private static extractConstructor(node: ts.ConstructorDeclaration): MethodInfo {
@@ -370,16 +374,18 @@ export class CodeParserService {
 			optional: !!p.questionToken
 		}));
 		
-		// Get line number for git diff
+		// Get line number range for git diff
 		const sourceFile = node.getSourceFile();
 		const lineNumber = sourceFile ? sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1 : undefined;
+		const endLineNumber = sourceFile ? sourceFile.getLineAndCharacterOfPosition(node.getEnd()).line + 1 : undefined;
 
 		return {
 			name: 'constructor',
 			parameters,
 			returnType: 'void',
 			visibility: 'public',
-			lineNumber
+			lineNumber,
+			endLineNumber
 		};
 	}
 
