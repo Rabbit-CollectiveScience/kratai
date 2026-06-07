@@ -35,21 +35,21 @@ export class GitChangesView {
         }
         .header {
             flex-shrink: 0;
-            background: white;
+            background: #333;
             padding: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            border-bottom: 2px solid #333;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            border-bottom: 2px solid #ccc;
             z-index: 1000;
         }
         .header h1 {
             margin: 0;
             font-size: 1.5em;
-            color: #333;
+            color: #ffffff;
             font-weight: 600;
         }
         .header p {
             margin: 5px 0 0 0;
-            color: #666;
+            color: #cccccc;
             font-size: 0.95em;
         }
         .content {
@@ -168,7 +168,7 @@ export class GitChangesView {
 </head>
 <body>
     <div class="header">
-        <h1>🔄 Git Changes</h1>
+        <h1>Git Changes</h1>
         <p>${workspaceName} • ${currentBranch} ← ${compareTarget} • ${totalChanges} files changed</p>
     </div>
     

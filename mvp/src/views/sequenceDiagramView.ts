@@ -32,10 +32,10 @@ export class SequenceDiagramView {
         }
         .header {
             flex-shrink: 0;
-            background: white;
+            background: #333;
             padding: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            border-bottom: 2px solid #333;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            border-bottom: 2px solid #ccc;
             z-index: 1000;
             display: flex;
             justify-content: space-between;
@@ -48,26 +48,26 @@ export class SequenceDiagramView {
         }
         .header-controls button {
             padding: 8px 16px;
-            border: 2px solid #333;
-            background: white;
-            color: #333;
+            border: 2px solid #ccc;
+            background: #2d2d30;
+            color: #e0e0e0;
             border-radius: 4px;
             cursor: pointer;
             font-size: 0.9em;
             font-weight: 500;
         }
         .header-controls button:hover {
-            background: #f0f0f0;
+            background: #3e3e42;
         }
         .header h1 {
             margin: 0;
             font-size: 1.5em;
-            color: #333;
+            color: #ffffff;
             font-weight: 600;
         }
         .header p {
             margin: 5px 0 0 0;
-            color: #666;
+            color: #cccccc;
             font-size: 0.95em;
         }
         .content {
@@ -141,13 +141,13 @@ export class SequenceDiagramView {
 <body>
     <div class="header">
         <div>
-            <h1>🔄 Sequence Diagram</h1>
-            <p>${className}.${methodName}() • ${sequenceData.actors.size} actors • ${sequenceData.calls.length} calls • max depth: ${sequenceData.maxDepth}</p>
+            <h1>Sequence Diagram: ${className}.${methodName}()</h1>
+            <p>${sequenceData.actors.size} actors • ${sequenceData.calls.length} calls • max depth: ${sequenceData.maxDepth}</p>
         </div>
         <div class="header-controls">
-            <button onclick="zoomIn()">🔍 Zoom In</button>
-            <button onclick="zoomOut()">🔍 Zoom Out</button>
-            <button onclick="resetZoom()">↺ Reset</button>
+            <button onclick="zoomIn()">Zoom In</button>
+            <button onclick="zoomOut()">Zoom Out</button>
+            <button onclick="resetZoom()">Reset</button>
         </div>
     </div>
     
