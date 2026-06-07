@@ -162,41 +162,44 @@ export async function generateClassDiagramDirect(context: vscode.ExtensionContex
 							vscode.commands.executeCommand('kratai.showConfigPanel');
 							break;
 						case 'openMethodSequence':
-							// Trace method calls
-							vscode.window.withProgress({
-								location: vscode.ProgressLocation.Notification,
-								title: `Tracing ${message.className}.${message.methodName}()...`,
-								cancellable: false
-							}, async () => {
-								const sequenceData = await MethodTracerService.traceMethod(
-									message.className,
-									message.methodName,
-									message.filePath,
-									workspacePath,
-									diagramData,
-									10 // max depth
-								);
-								
-								// Open a new tab with sequence diagram
-								const sequencePanel = vscode.window.createWebviewPanel(
-									'krataiSequenceDiagram',
-									`🔄 ${message.className}.${message.methodName}()`,
-									vscode.ViewColumn.Two,
-									{
-										enableScripts: true,
-										retainContextWhenHidden: true
-									}
-								);
-								
-								// Generate and show sequence diagram
-								sequencePanel.webview.html = SequenceDiagramView.generate(
-									message.className,
-									message.methodName,
-									message.filePath,
-									sequenceData
-								);
-							});
-							break;
+						// Get the viewColumn of the current panel
+						const targetColumn = panel.viewColumn || vscode.ViewColumn.One;
+						
+						// Trace method calls
+						vscode.window.withProgress({
+							location: vscode.ProgressLocation.Notification,
+							title: `Tracing ${message.className}.${message.methodName}()...`,
+							cancellable: false
+						}, async () => {
+							const sequenceData = await MethodTracerService.traceMethod(
+								message.className,
+								message.methodName,
+								message.filePath,
+								workspacePath,
+								diagramData,
+								10 // max depth
+							);
+							
+							// Open sequence diagram in the SAME viewColumn as class diagram
+							const sequencePanel = vscode.window.createWebviewPanel(
+								'krataiSequenceDiagram',
+								`🔄 ${message.className}.${message.methodName}()`,
+								targetColumn,
+								{
+									enableScripts: true,
+									retainContextWhenHidden: true
+								}
+							);
+							
+							// Generate and show sequence diagram
+							sequencePanel.webview.html = SequenceDiagramView.generate(
+								message.className,
+								message.methodName,
+								message.filePath,
+								sequenceData
+							);
+						});
+						break;
 					}
 				},
 				undefined,
