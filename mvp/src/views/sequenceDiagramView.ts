@@ -6,9 +6,11 @@ export class SequenceDiagramView {
 		className: string,
 		methodName: string,
 		filePath: string,
-		sequenceData: SequenceData
+		sequenceData: SequenceData,
+		iconUri?: string
 	): string {
 		const diagramHTML = this.generateSequenceDiagramHTML(className, methodName, sequenceData);
+		const iconTag = iconUri ? `<img src="${iconUri}" style="height:48px;width:48px;object-fit:contain;filter:invert(1);opacity:0.9;flex-shrink:0" />` : '';
 		
 		return `<!DOCTYPE html>
 <html lang="en">
@@ -140,9 +142,12 @@ export class SequenceDiagramView {
 </head>
 <body>
     <div class="header">
-        <div>
-            <h1>Sequence Diagram: ${className}.${methodName}()</h1>
-            <p>${sequenceData.actors.size} actors • ${sequenceData.calls.length} calls • max depth: ${sequenceData.maxDepth}</p>
+        <div style="display:flex;align-items:center;gap:16px">
+            ${iconTag}
+            <div>
+                <h1>Sequence Diagram: ${className}.${methodName}()</h1>
+                <p>${sequenceData.actors.size} actors • ${sequenceData.calls.length} calls • max depth: ${sequenceData.maxDepth}</p>
+            </div>
         </div>
         <div class="header-controls">
             <button onclick="zoomIn()">Zoom In</button>

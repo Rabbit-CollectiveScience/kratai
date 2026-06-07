@@ -144,15 +144,17 @@ export async function generateClassDiagramDirect(context: vscode.ExtensionContex
 			// Create and show webview
 			const panel = vscode.window.createWebviewPanel(
 				'krataiClassDiagram',
-				'📊 Class Diagram',
+				'Class Diagram',
 				vscode.ViewColumn.One,
 				{
 					enableScripts: true,
-					retainContextWhenHidden: true
+					retainContextWhenHidden: true,
+					localResourceRoots: [vscode.Uri.joinPath(context.extensionUri)]
 				}
 			);
 
-			panel.webview.html = ClassDiagramView.generate(nodes, edges, workspaceName);
+			const iconUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'icon.png'));
+			panel.webview.html = ClassDiagramView.generate(nodes, edges, workspaceName, iconUri.toString());
 
 			// Handle messages from the webview
 			panel.webview.onDidReceiveMessage(
@@ -183,20 +185,23 @@ export async function generateClassDiagramDirect(context: vscode.ExtensionContex
 							// Open sequence diagram in the SAME viewColumn as class diagram
 							const sequencePanel = vscode.window.createWebviewPanel(
 								'krataiSequenceDiagram',
-								`🔄 ${message.className}.${message.methodName}()`,
+								`${message.className}.${message.methodName}()`,
 								targetColumn,
 								{
 									enableScripts: true,
-									retainContextWhenHidden: true
+									retainContextWhenHidden: true,
+									localResourceRoots: [vscode.Uri.joinPath(context.extensionUri)]
 								}
 							);
+							const seqIconUri = sequencePanel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'icon.png'));
 							
 							// Generate and show sequence diagram
 							sequencePanel.webview.html = SequenceDiagramView.generate(
 								message.className,
 								message.methodName,
 								message.filePath,
-								sequenceData
+								sequenceData,
+								seqIconUri.toString()
 							);
 						});
 						break;

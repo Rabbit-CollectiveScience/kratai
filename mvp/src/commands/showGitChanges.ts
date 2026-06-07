@@ -31,14 +31,15 @@ export async function showGitChanges(context: vscode.ExtensionContext): Promise<
 			// Create and show webview
 			const panel = vscode.window.createWebviewPanel(
 				'krataiGitDiff',
-				'🔄 Git Changes',
+				'Git Changes',
 				vscode.ViewColumn.One,
 				{
-					enableScripts: true
+					enableScripts: true,
+					localResourceRoots: [vscode.Uri.joinPath(context.extensionUri)]
 				}
 			);
-
-			panel.webview.html = GitChangesView.generate(result);
+			const iconUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'icon.png'));
+			panel.webview.html = GitChangesView.generate(result, iconUri.toString());
 		});
 
 	} catch (error) {

@@ -2,7 +2,7 @@ import { GitComparisonResult } from '../types';
 
 export class GitChangesView {
 	
-	static generate(result: GitComparisonResult): string {
+	static generate(result: GitComparisonResult, iconUri?: string): string {
 		const { workspaceName, currentBranch, compareTarget, changes } = result;
 		
 		const totalChanges = changes.length;
@@ -168,8 +168,13 @@ export class GitChangesView {
 </head>
 <body>
     <div class="header">
-        <h1>Git Changes</h1>
-        <p>${workspaceName} • ${currentBranch} ← ${compareTarget} • ${totalChanges} files changed</p>
+        <div style="display:flex;align-items:center;gap:16px">
+            ${iconUri ? `<img src="${iconUri}" style="height:48px;width:48px;object-fit:contain;filter:invert(1);opacity:0.9;flex-shrink:0" />` : ''}
+            <div>
+                <h1>Git Changes</h1>
+                <p>${workspaceName} • ${currentBranch} ← ${compareTarget} • ${totalChanges} files changed</p>
+            </div>
+        </div>
     </div>
     
     <div class="content">

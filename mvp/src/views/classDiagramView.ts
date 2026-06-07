@@ -4,7 +4,7 @@ import { FolderBoxRenderer } from './components/folderBoxRenderer';
 
 export class ClassDiagramView {
 	
-	static generate(nodes: ReactFlowNode[], edges: ReactFlowEdge[], workspaceName: string): string {
+	static generate(nodes: ReactFlowNode[], edges: ReactFlowEdge[], workspaceName: string, iconUri?: string): string {
 		// Step 1: Build folder structure
 		const root = FolderStructureBuilder.build(nodes);
 		console.log('=== Folder Structure (CSS Grid Layout) ===');
@@ -26,7 +26,8 @@ export class ClassDiagramView {
 			edges.length,
 			FolderStructureBuilder.countFolders(root),
 			folderHTML,
-			edges
+			edges,
+			iconUri
 		);
 	}
 
@@ -36,7 +37,8 @@ export class ClassDiagramView {
 		edgeCount: number,
 		folderCount: number,
 		folderHTML: string,
-		edges: ReactFlowEdge[]
+		edges: ReactFlowEdge[],
+		iconUri?: string
 	): string {
 		// Properly encode edges for JavaScript embedding
 		const edgesJSON = JSON.stringify(edges)
@@ -149,9 +151,12 @@ export class ClassDiagramView {
 </head>
 <body>
     <div class="header">
-        <div>
-            <h1>Class Diagram</h1>
-            <p>${workspaceName} • ${classCount} classes • ${folderCount} folders • ${edgeCount} relationships</p>
+        <div style="display:flex;align-items:center;gap:16px">
+            ${iconUri ? `<img src="${iconUri}" style="height:48px;width:48px;object-fit:contain;filter:invert(1);opacity:0.9;flex-shrink:0" />` : ''}
+            <div>
+                <h1>Class Diagram</h1>
+                <p>${workspaceName} • ${classCount} classes • ${folderCount} folders • ${edgeCount} relationships</p>
+            </div>
         </div>
         <div class="header-controls">
             <button onclick="zoomIn()">Zoom In</button>
