@@ -76,6 +76,11 @@
         "command": "kratai.openGitChanges",
         "title": "Show Git Changes",
         "icon": "$(git-compare)"
+      },
+      {
+        "command": "kratai.openCommunity",
+        "title": "Community & Feedback",
+        "icon": "$(comment-discussion)"
       }
     ]
   },

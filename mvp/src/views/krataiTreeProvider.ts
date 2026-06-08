@@ -35,7 +35,8 @@ export class KrataiTreeProvider implements vscode.TreeDataProvider<KrataiTreeIte
 			return Promise.resolve([
 				new KrataiTreeItem('Generate Class Diagram', 'kratai.openClassDiagram', 'graph'),
 				new KrataiTreeItem('Show Git Changes', 'kratai.openGitChanges', 'git-compare'),
-				new KrataiTreeItem('Settings', 'kratai.showConfigPanel', 'settings-gear')
+				new KrataiTreeItem('Settings', 'kratai.showConfigPanel', 'settings-gear'),
+				new KrataiTreeItem('Community & Feedback', 'kratai.openCommunity', 'comment-discussion')
 			]);
 		}
 		return Promise.resolve([]);
