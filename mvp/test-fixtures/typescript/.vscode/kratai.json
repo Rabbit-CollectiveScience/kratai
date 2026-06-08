@@ -1,0 +1,42 @@
+{
+  "selectedFolders": [
+    "01-basic-classes/src",
+    "02-react-components/src",
+    "06-nextjs-app/src",
+    "06-nextjs-app/src/app",
+    "06-nextjs-app/src/app/api",
+    "06-nextjs-app/src/app/api/posts",
+    "06-nextjs-app/src/components",
+    "06-nextjs-app/src/lib"
+  ],
+  "selectedExtensions": [
+    ".ts",
+    ".tsx",
+    "on",
+    "on",
+    "on",
+    "on",
+    "on",
+    "on",
+    "on",
+    "on"
+  ],
+  "respectGitignore": true,
+  "followSymlinks": false,
+  "classTypeFilters": {
+    "class": true,
+    "interface": true,
+    "abstract": true
+  },
+  "relationshipTypeFilters": {
+    "extends": true,
+    "implements": true,
+    "composition": true,
+    "uses": true
+  },
+  "gitDiff": {
+    "enabled": true,
+    "baseCommit": "HEAD~1"
+  },
+  "lastUpdated": "2026-06-08T23:05:29.404Z"
+}
