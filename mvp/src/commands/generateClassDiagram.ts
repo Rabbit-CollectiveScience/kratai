@@ -8,6 +8,7 @@ import { ConfigService } from '../services/configService';
 import { GitDiffEnricher } from '../services/gitDiffEnricher';
 import { MethodTracerService } from '../services/methodTracerService';
 import { SequenceDiagramView } from '../views/sequenceDiagramView';
+import { TelemetryService } from '../services/telemetryService';
 
 export async function generateClassDiagram(context: vscode.ExtensionContext): Promise<void> {
 	// Check if workspace is opened
@@ -156,6 +157,12 @@ export async function generateClassDiagramDirect(context: vscode.ExtensionContex
 			const iconUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'icon.png'));
 			panel.webview.html = ClassDiagramView.generate(nodes, edges, workspaceName, iconUri.toString());
 
+			TelemetryService.trackGenerateClassDiagram(
+				diagramData.classes.length,
+				nodes.filter(n => n.type === 'folder').length,
+				diagramData.relationships.length
+			);
+
 			// Handle messages from the webview
 			panel.webview.onDidReceiveMessage(
 				async message => {
@@ -202,6 +209,11 @@ export async function generateClassDiagramDirect(context: vscode.ExtensionContex
 								message.filePath,
 								sequenceData,
 								seqIconUri.toString()
+							);
+							TelemetryService.trackOpenSequenceDiagram(
+								sequenceData.actors.size,
+								sequenceData.calls.length,
+								sequenceData.maxDepth
 							);
 						});
 						break;

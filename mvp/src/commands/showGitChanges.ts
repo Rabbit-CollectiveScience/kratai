@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { GitService } from '../services/gitService';
 import { GitChangesView } from '../views/gitChangesView';
+import { TelemetryService } from '../services/telemetryService';
 
 export async function showGitChanges(context: vscode.ExtensionContext): Promise<void> {
 	// Check if workspace is opened
@@ -40,6 +41,7 @@ export async function showGitChanges(context: vscode.ExtensionContext): Promise<
 			);
 			const iconUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'icon.png'));
 			panel.webview.html = GitChangesView.generate(result, iconUri.toString());
+			TelemetryService.trackShowGitChanges(result.changes.length);
 		});
 
 	} catch (error) {
