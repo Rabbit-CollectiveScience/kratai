@@ -1,0 +1,13 @@
+vendor/
+node_modules/
+.env
+.env.local
+.env.*.local
+storage/
+bootstrap/cache/
+public/storage
+public/hot
+*.log
+.DS_Store
+composer.phar
+.phpunit.result.cache
