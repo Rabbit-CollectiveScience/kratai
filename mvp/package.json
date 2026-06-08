@@ -1,14 +1,38 @@
 {
   "name": "kratai",
-  "displayName": "kratai",
-  "description": "ratai-mvp",
-  "version": "0.0.1",
+  "displayName": "Kratai - Code Visualizer",
+  "description": "Visualize your TypeScript codebase as interactive class diagrams and sequence diagrams, with git diff highlighting to see exactly what changed.",
+  "version": "1.0.0",
+  "publisher": "kratai-core",
   "icon": "icon.png",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Rabbit-CollectiveScience/kratai-core"
+  },
+  "homepage": "https://kratai.com",
+  "bugs": {
+    "url": "https://github.com/Rabbit-CollectiveScience/kratai-core/issues"
+  },
+  "keywords": [
+    "class diagram",
+    "sequence diagram",
+    "uml",
+    "visualization",
+    "typescript",
+    "git diff",
+    "code analysis"
+  ],
+  "galleryBanner": {
+    "color": "#333333",
+    "theme": "dark"
+  },
   "engines": {
     "vscode": "^1.120.0"
   },
   "categories": [
-    "Other"
+    "Visualization",
+    "Programming Languages"
   ],
   "activationEvents": [],
   "main": "./out/extension.js",
