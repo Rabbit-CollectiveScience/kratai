@@ -1,22 +1,70 @@
-# JavaScript Support (Planned)
+# JavaScript Test Fixtures
 
-Plain JavaScript support is planned for a future release.
+Example JavaScript projects for testing Kratai's code visualization features.
 
-## Current Status
+## ✅ JavaScript Support Now Available!
 
-Kratai currently uses the TypeScript AST parser, which can parse some JavaScript files but lacks full support for:
-- ES6+ class syntax without types
-- Prototype-based inheritance
-- Dynamic property assignment
-- CommonJS modules
+Kratai now parses JavaScript (`.js`) and JSX (`.jsx`) files using the Strategy Pattern architecture.
 
-## Roadmap
+## Available Examples
 
-Full JavaScript support will require:
-- Enhanced parser configuration for plain JS
-- Inference of class relationships without type annotations
-- Support for both ES6 classes and prototype patterns
+```
+javascript/
+├── 01-basic-classes/      ✅ ES6 classes with inheritance
+└── 02-react-components/   ✅ React function components + hooks
+```
 
-## Contribute
+## Implemented Examples
 
-If you're interested in contributing JavaScript support, please open a discussion or issue on GitHub.
+### 01 - Basic Classes
+- `Animal.js` - ES6 class with constructor and methods
+- `Pets.js` - Dog and Cat classes extending Animal
+- `PetOwner.js` - Composition example with array of pets
+- **Features:** Constructor property inference, inheritance detection, method extraction
+
+### 02 - React Components
+- `useFetch.js` - Custom React hook with useState/useEffect
+- `UserCard.jsx` - Function component with props destructuring
+- `UserList.jsx` - Component using UserCard + useFetch
+- **Features:** JSX parsing, function component detection, module-level exports
+
+## Parser Capabilities
+
+The `JavaScriptParser` can detect:
+- ✅ ES6 class declarations
+- ✅ Class inheritance (`extends`)
+- ✅ Constructor properties (`this.x = ...`)
+- ✅ Methods (regular, static, async)
+- ✅ JSX syntax
+- ✅ Function components
+- ✅ Module-level functions
+- ✅ CommonJS and ES6 module exports
+
+## Testing
+
+Run the test script:
+```bash
+cd /Users/nightrabbit/Documents/GitHub/kratai/mvp
+node test-js-parser.js
+```
+
+Expected output:
+```
+Found classes: [ 'Animal', 'Dog', 'Cat', 'PetOwner' ]
+Dog extends: Animal
+Cat extends: Animal
+```
+
+## Usage in Kratai
+
+1. Open a workspace with `.js` or `.jsx` files
+2. Run **Kratai: Generate Class Diagram**
+3. JavaScript classes will appear alongside TypeScript classes
+4. Inheritance relationships are visualized
+
+## Future Enhancements
+
+- [ ] Prototype-based classes
+- [ ] Class fields proposal syntax
+- [ ] JSDoc type annotations
+- [ ] Flow type inference
