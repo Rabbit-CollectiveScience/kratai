@@ -124,13 +124,17 @@ export class JavaScriptParser implements IParserStrategy {
 
 		for (const member of node.members) {
 			if (ts.isPropertyDeclaration(member) && member.name) {
+				const sourceFile = member.getSourceFile();
 				properties.push({
 					name: member.name.getText(),
 					type: member.type?.getText() || 'any',
 					visibility: 'public',
 					isStatic: member.modifiers?.some(m => m.kind === ts.SyntaxKind.StaticKeyword) || false,
+					lineNumber: sourceFile?.getLineAndCharacterOfPosition(member.getStart()).line + 1,
+					endLineNumber: sourceFile?.getLineAndCharacterOfPosition(member.getEnd()).line + 1,
 				});
 			} else if (ts.isMethodDeclaration(member) && member.name) {
+				const sourceFile = member.getSourceFile();
 				const isStatic = member.modifiers?.some(m => m.kind === ts.SyntaxKind.StaticKeyword) || false;
 				const isAsync = member.modifiers?.some(m => m.kind === ts.SyntaxKind.AsyncKeyword) || false;
 				methods.push({
@@ -144,8 +148,11 @@ export class JavaScriptParser implements IParserStrategy {
 					visibility: 'public',
 					isStatic,
 					isAsync,
+					lineNumber: sourceFile?.getLineAndCharacterOfPosition(member.getStart()).line + 1,
+					endLineNumber: sourceFile?.getLineAndCharacterOfPosition(member.getEnd()).line + 1,
 				});
 			} else if (ts.isConstructorDeclaration(member)) {
+				const sourceFile = member.getSourceFile();
 				// Extract this.x = ... assignments as properties
 				const ctorProps = this.extractConstructorProperties(member);
 				for (const prop of ctorProps) {
@@ -162,6 +169,8 @@ export class JavaScriptParser implements IParserStrategy {
 					})),
 					returnType: 'void',
 					visibility: 'public',
+					lineNumber: sourceFile?.getLineAndCharacterOfPosition(member.getStart()).line + 1,
+					endLineNumber: sourceFile?.getLineAndCharacterOfPosition(member.getEnd()).line + 1,
 				});
 			}
 		}

@@ -23,10 +23,19 @@ export class GitDiffEnricher {
 			return this.markAllUnchanged(diagramData);
 		}
 
+		// Get the git root directory to convert absolute paths to git-relative paths
+		const gitRoot = await GitDiffService.getGitRoot(workspacePath);
+		if (!gitRoot) {
+			console.log('⚠️ Could not determine git root, marking all as unchanged');
+			return this.markAllUnchanged(diagramData);
+		}
+
 		console.log(`📊 Processing ${diagramData.classes.length} classes for git diff`);
-		console.log(`📋 Modified files in git diff:`, Array.from(diffInfo.modifiedFiles));
-		console.log(`📋 Added files in git diff:`, Array.from(diffInfo.addedFiles));
-		console.log(`📋 Deleted files in git diff:`, Array.from(diffInfo.deletedFiles));
+		console.log(`� Git root: "${gitRoot}"`);
+		console.log(`🔍 Workspace: "${workspacePath}"`);
+		console.log(`�📋 Modified files in git diff: (${diffInfo.modifiedFiles.size})`, Array.from(diffInfo.modifiedFiles));
+		console.log(`📋 Added files in git diff: (${diffInfo.addedFiles.size})`, Array.from(diffInfo.addedFiles));
+		console.log(`📋 Deleted files in git diff: (${diffInfo.deletedFiles.size})`, Array.from(diffInfo.deletedFiles));
 
 		// Parse deleted files and add them to diagram data
 		if (diffInfo.deletedFiles.size > 0) {
@@ -73,36 +82,44 @@ export class GitDiffEnricher {
 
 		// Enrich each class with change status
 		for (const classInfo of diagramData.classes) {
-			const relativeFilePath = classInfo.filePath;
-			const normalizedPath = relativeFilePath.replace(/\\/g, '/'); // Normalize to forward slashes
+			// classInfo.filePath is now workspace-relative (e.g., "test-fixtures/typescript/03-node-backend/src/controllers/ProductController.ts")
+			// We need to convert it to git-relative (e.g., "mvp/test-fixtures/typescript/03-node-backend/src/controllers/ProductController.ts")
+			const workspaceRelativePath = classInfo.filePath.replace(/\\/g, '/');
+			const gitRelativePath = path.relative(gitRoot, path.join(workspacePath, workspaceRelativePath)).replace(/\\/g, '/');
+			
+			console.log(`  🔍 Checking "${classInfo.name}"`);
+			console.log(`     workspace-relative: "${workspaceRelativePath}"`);
+			console.log(`     git-relative: "${gitRelativePath}"`);
+			console.log(`     in modified set? ${diffInfo.modifiedFiles.has(gitRelativePath)}`);
+			console.log(`     in added set? ${diffInfo.addedFiles.has(gitRelativePath)}`);
 			
 			// Determine class-level change status
-			if (diffInfo.addedFiles.has(normalizedPath)) {
+			if (diffInfo.addedFiles.has(gitRelativePath)) {
 				classInfo.changeStatus = 'added';
 				addedCount++;
 				// Mark all members as added
 				classInfo.properties.forEach(prop => prop.changeStatus = 'added');
 				classInfo.methods.forEach(method => method.changeStatus = 'added');
-				console.log(`  ✅ ${classInfo.name} at "${normalizedPath}" → ADDED`);
-			} else if (diffInfo.deletedFiles.has(normalizedPath)) {
+				console.log(`  ✅ ${classInfo.name} at "${gitRelativePath}" → ADDED`);
+			} else if (diffInfo.deletedFiles.has(gitRelativePath)) {
 				classInfo.changeStatus = 'deleted';
 				deletedCount++;
 				// Mark all members as deleted
 				classInfo.properties.forEach(prop => prop.changeStatus = 'deleted');
 				classInfo.methods.forEach(method => method.changeStatus = 'deleted');
-				console.log(`  ❌ ${classInfo.name} at "${normalizedPath}" → DELETED (still exists in workspace)`);
-			} else if (diffInfo.modifiedFiles.has(normalizedPath)) {
+				console.log(`  ❌ ${classInfo.name} at "${gitRelativePath}" → DELETED (still exists in workspace)`);
+			} else if (diffInfo.modifiedFiles.has(gitRelativePath)) {
 				// File is modified - need to check member-level changes
-				console.log(`  🔍 Found "${normalizedPath}" in modified files, checking members...`);
-				const fileChange = diffInfo.fileChanges.get(normalizedPath);
+				console.log(`  🔍 Found "${gitRelativePath}" in modified files, checking members...`);
+				const fileChange = diffInfo.fileChanges.get(gitRelativePath);
 				
 				// Get the old version from git to detect deleted members
-				const oldFileContent = await GitDiffService.getFileContentFromHistory(workspacePath, normalizedPath, baseCommit);
+				const oldFileContent = await GitDiffService.getFileContentFromHistory(workspacePath, gitRelativePath, baseCommit);
 				let oldClasses: ClassInfo[] = [];
 				
 				if (oldFileContent) {
 					// Parse the old version
-					const tempFilePath = path.join(os.tmpdir(), `kratai_old_${Date.now()}_${path.basename(normalizedPath)}`);
+					const tempFilePath = path.join(os.tmpdir(), `kratai_old_${Date.now()}_${path.basename(gitRelativePath)}`);
 					fs.writeFileSync(tempFilePath, oldFileContent);
 					
 					try {
@@ -141,7 +158,7 @@ export class GitDiffEnricher {
 				classInfo.methods.forEach(method => method.changeStatus = 'unchanged');
 				// Only log if it's potentially an issue (new classes not detected)
 				if (!classInfo.name.startsWith('[') && classInfo.methods.length > 0) {
-					console.log(`  ⚪ ${classInfo.name} at "${normalizedPath}" → UNCHANGED (not in any git diff set)`);
+					console.log(`  ⚪ ${classInfo.name} at "${gitRelativePath}" → UNCHANGED (not in any git diff set)`);
 				}
 			}
 		}

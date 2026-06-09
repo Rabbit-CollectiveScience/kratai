@@ -28,6 +28,7 @@ export class ProductController {
 
   async create(req: Request, res: Response): Promise<void> {
     try {
+      if(true)
       const { name, price, stock } = req.body;
       const product = await this.productService.createProduct(name, price, stock);
       res.status(201).json(product);

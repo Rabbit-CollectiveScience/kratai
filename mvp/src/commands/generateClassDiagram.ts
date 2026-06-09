@@ -66,14 +66,7 @@ export async function generateClassDiagramDirect(context: vscode.ExtensionContex
 			// Parse workspace
 			progress.report({ message: 'Analyzing code...' });
 			const diagramData = await CodeParserService.parseWorkspace(workspacePath);
-
-			// Normalize file paths to workspace-relative (fixes path mismatch bugs)
-			diagramData.classes.forEach(classInfo => {
-				if (classInfo.filePath.includes(workspacePath)) {
-					// Convert absolute to relative
-					classInfo.filePath = classInfo.filePath.substring(workspacePath.length + 1);
-				}
-			});
+			// Paths are now workspace-relative thanks to CodeParserService normalization
 
 			// Enrich with git diff information if enabled
 			if (config.gitDiff?.enabled !== false) {

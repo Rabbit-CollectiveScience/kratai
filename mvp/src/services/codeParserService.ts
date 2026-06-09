@@ -24,6 +24,13 @@ export class CodeParserService {
 
 		for (const file of files) {
 			const fileClasses = this.parseFile(file);
+			// Normalize all paths to workspace-relative immediately after parsing
+			// This ensures consistent path format for all parsers (TS, JS, future languages)
+			fileClasses.forEach(classInfo => {
+				if (path.isAbsolute(classInfo.filePath)) {
+					classInfo.filePath = path.relative(workspacePath, classInfo.filePath).replace(/\\/g, '/');
+				}
+			});
 			classes.push(...fileClasses);
 		}
 

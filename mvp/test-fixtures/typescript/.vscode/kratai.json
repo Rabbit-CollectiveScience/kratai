@@ -24,16 +24,12 @@
     "on",
     "on",
     "on",
-    "on",
-    "on",
     "on"
   ],
   "respectGitignore": true,
   "followSymlinks": false,
   "classTypeFilters": {
     "class": true,
-    "interface": true,
-    "abstract": true,
     "module": true
   },
   "relationshipTypeFilters": {
@@ -46,5 +42,5 @@
     "enabled": true,
     "baseCommit": "HEAD~1"
   },
-  "lastUpdated": "2026-06-09T10:17:44.771Z"
+  "lastUpdated": "2026-06-09T10:41:27.948Z"
 }

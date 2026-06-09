@@ -22,20 +22,39 @@ export interface FileChange {
 
 export class GitDiffService {
 	/**
+	 * Get the root directory of the git repository
+	 */
+	static async getGitRoot(workspacePath: string): Promise<string | null> {
+		try {
+			const { stdout } = await execAsync('git rev-parse --show-toplevel', { cwd: workspacePath });
+			return stdout.trim();
+		} catch {
+			return null;
+		}
+	}
+
+	/**
 	 * Get git diff between HEAD and a base commit (default: previous commit)
 	 * If there are uncommitted changes, show those instead
 	 */
 	static async getDiff(workspacePath: string, baseCommit: string = 'HEAD~1'): Promise<GitDiffInfo | null> {
 		try {
+			// Get git root first
+			const gitRoot = await this.getGitRoot(workspacePath);
+			if (!gitRoot) {
+				console.log('❌ Not a git repository');
+				return null;
+			}
+
 			// Check if git repo exists
-			const { stdout: isRepo } = await execAsync('git rev-parse --is-inside-work-tree', { cwd: workspacePath });
+			const { stdout: isRepo } = await execAsync('git rev-parse --is-inside-work-tree', { cwd: gitRoot });
 			if (!isRepo.trim()) {
 				console.log('❌ Not a git repository');
 				return null;
 			}
 
 			// First check if there are uncommitted changes
-			const hasUncommitted = await this.hasUncommittedChanges(workspacePath);
+			const hasUncommitted = await this.hasUncommittedChanges(gitRoot);
 			console.log(`🔍 Uncommitted changes: ${hasUncommitted}`);
 
 			let statusOutput: string;
@@ -44,7 +63,7 @@ export class GitDiffService {
 			if (hasUncommitted) {
 				// Show working directory changes (uncommitted)
 				console.log('📝 Showing uncommitted changes (working directory)');
-				const { stdout } = await execAsync('git diff --name-status HEAD', { cwd: workspacePath });
+				const { stdout } = await execAsync('git diff --name-status HEAD', { cwd: gitRoot });
 				statusOutput = stdout;
 				diffCommand = 'git diff HEAD';
 			} else {
@@ -52,7 +71,7 @@ export class GitDiffService {
 				console.log(`📝 Showing committed changes (${baseCommit} → HEAD)`);
 				const { stdout } = await execAsync(
 					`git diff --name-status ${baseCommit} HEAD`,
-					{ cwd: workspacePath }
+					{ cwd: gitRoot }
 				);
 				statusOutput = stdout;
 				diffCommand = `git diff ${baseCommit} HEAD`;
@@ -94,12 +113,12 @@ export class GitDiffService {
 				} else if (status === 'M' || status.startsWith('R')) {
 					modifiedFiles.add(filePath);
 					// Get detailed line-level diff for modified files
-					await this.getFileLineDiff(workspacePath, filePath, diffCommand, fileChanges);
+					await this.getFileLineDiff(gitRoot, filePath, diffCommand, fileChanges);
 				}
 			}
 
 			// Also check for untracked files (new files not yet added to git)
-			const { stdout: untrackedOutput } = await execAsync('git ls-files --others --exclude-standard', { cwd: workspacePath });
+			const { stdout: untrackedOutput } = await execAsync('git ls-files --others --exclude-standard', { cwd: gitRoot });
 			const untrackedLines = untrackedOutput.trim().split('\n').filter(line => line);
 			console.log(`📊 Git found ${untrackedLines.length} untracked (new) files`);
 			
@@ -138,16 +157,20 @@ export class GitDiffService {
 	 * Get line-level changes for a specific file
 	 */
 	private static async getFileLineDiff(
-		workspacePath: string,
+		gitRootPath: string,
 		filePath: string,
 		diffCommand: string,
 		fileChanges: Map<string, FileChange>
 	): Promise<void> {
 		try {
+			const fullCommand = `${diffCommand} -U0 -- "${filePath}"`;
+			console.log(`    📝 Running git diff command: ${fullCommand}`);
+			console.log(`    📝 CWD (git root): ${gitRootPath}`);
 			const { stdout } = await execAsync(
-				`${diffCommand} -U0 -- "${filePath}"`,
-				{ cwd: workspacePath }
+				fullCommand,
+				{ cwd: gitRootPath }
 			);
+			console.log(`    📝 Git diff output length: ${stdout.length} bytes`);
 
 			const addedLines = new Set<number>();
 			const deletedLines = new Set<number>();
@@ -230,7 +253,9 @@ export class GitDiffService {
 	 */
 	static async getDeletedFileContent(workspacePath: string, filePath: string, baseCommit: string = 'HEAD~1'): Promise<string | null> {
 		try {
-			const { stdout } = await execAsync(`git show ${baseCommit}:"${filePath}"`, { cwd: workspacePath });
+			const gitRoot = await this.getGitRoot(workspacePath);
+			if (!gitRoot) { return null; }
+			const { stdout } = await execAsync(`git show ${baseCommit}:"${filePath}"`, { cwd: gitRoot });
 			return stdout;
 		} catch (error) {
 			console.error(`Failed to get deleted file content for ${filePath}:`, error);
@@ -243,7 +268,9 @@ export class GitDiffService {
 	 */
 	static async getFileContentFromHistory(workspacePath: string, filePath: string, baseCommit: string = 'HEAD~1'): Promise<string | null> {
 		try {
-			const { stdout } = await execAsync(`git show ${baseCommit}:"${filePath}"`, { cwd: workspacePath });
+			const gitRoot = await this.getGitRoot(workspacePath);
+			if (!gitRoot) { return null; }
+			const { stdout } = await execAsync(`git show ${baseCommit}:"${filePath}"`, { cwd: gitRoot });
 			return stdout;
 		} catch (error) {
 			console.error(`Failed to get file content from history for ${filePath}:`, error);
