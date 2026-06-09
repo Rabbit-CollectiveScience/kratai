@@ -1,0 +1,23 @@
+{
+  "selectedFolders": [
+    "01-laravel-backend/src"
+  ],
+  "selectedExtensions": [
+    ".php"
+  ],
+  "respectGitignore": true,
+  "followSymlinks": false,
+  "gitDiff": {
+    "enabled": true,
+    "baseCommit": "HEAD~1"
+  },
+  "classTypeFilters": {
+    "class": true,
+    "interface": true
+  },
+  "relationshipTypeFilters": {
+    "extends": true,
+    "implements": true,
+    "uses": true
+  }
+}

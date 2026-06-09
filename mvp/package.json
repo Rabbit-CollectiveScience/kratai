@@ -103,6 +103,7 @@
     "typescript-eslint": "^8.56.1"
   },
   "dependencies": {
-    "@vscode/extension-telemetry": "^1.5.2"
+    "@vscode/extension-telemetry": "^1.5.2",
+    "php-parser": "^3.6.0"
   }
 }

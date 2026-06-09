@@ -9,7 +9,7 @@ export class ConfigService {
 	static getDefaultConfig(): KrataiConfig {
 		return {
 			selectedFolders: [],  // Empty = all folders except node_modules/dist
-			selectedExtensions: ['.ts', '.tsx', '.js', '.jsx', '.py'],
+			selectedExtensions: ['.ts', '.tsx', '.js', '.jsx', '.py', '.php'],
 			respectGitignore: true,
 			followSymlinks: false,
 			gitDiff: {
