@@ -1,0 +1,316 @@
+import * as ts from 'typescript';
+import * as fs from 'fs';
+import * as path from 'path';
+import { ClassInfo, PropertyInfo, MethodInfo, ClassRelationship } from '../../types/diagram';
+import { IParserStrategy } from './IParserStrategy';
+
+export class TypeScriptParser implements IParserStrategy {
+	supportedExtensions = ['.ts', '.tsx'];
+
+	parseFile(filePath: string): ClassInfo[] {
+		const classes: ClassInfo[] = [];
+
+		try {
+			const sourceCode = fs.readFileSync(filePath, 'utf-8');
+			const sourceFile = ts.createSourceFile(filePath, sourceCode, ts.ScriptTarget.Latest, true);
+
+			const visit = (node: ts.Node) => {
+				if (ts.isClassDeclaration(node) && node.name) {
+					classes.push(this.extractClassInfo(node, filePath));
+				} else if (ts.isInterfaceDeclaration(node)) {
+					classes.push(this.extractInterfaceInfo(node, filePath));
+				}
+				ts.forEachChild(node, visit);
+			};
+
+			visit(sourceFile);
+
+			if (classes.length === 0) {
+				const moduleInfo = this.extractModuleInfo(sourceFile, filePath);
+				if (moduleInfo) {
+					classes.push(moduleInfo);
+				}
+			}
+		} catch {
+			// Return empty on parse error — never crash the extension
+		}
+
+		return classes;
+	}
+
+	extractRelationships(classes: ClassInfo[], allClassNames: Set<string>): ClassRelationship[] {
+		const relationships: ClassRelationship[] = [];
+
+		for (const classInfo of classes) {
+			if (classInfo.extends) {
+				relationships.push({ from: classInfo.name, to: classInfo.extends, type: 'extends' });
+			}
+
+			if (classInfo.implements) {
+				for (const iface of classInfo.implements) {
+					relationships.push({ from: classInfo.name, to: iface, type: 'implements' });
+				}
+			}
+
+			const dependencies = new Set<string>();
+
+			for (const prop of classInfo.properties) {
+				this.extractTypeNames(prop.type).forEach(t => {
+					if (allClassNames.has(t) && t !== classInfo.name) { dependencies.add(t); }
+				});
+			}
+
+			for (const method of classInfo.methods) {
+				for (const param of method.parameters) {
+					this.extractTypeNames(param.type).forEach(t => {
+						if (allClassNames.has(t) && t !== classInfo.name) { dependencies.add(t); }
+					});
+				}
+				this.extractTypeNames(method.returnType).forEach(t => {
+					if (allClassNames.has(t) && t !== classInfo.name) { dependencies.add(t); }
+				});
+			}
+
+			dependencies.forEach(dep => {
+				const hasStronger = relationships.some(
+					r => r.from === classInfo.name && r.to === dep &&
+						(r.type === 'extends' || r.type === 'implements')
+				);
+				if (!hasStronger) {
+					relationships.push({ from: classInfo.name, to: dep, type: 'uses' });
+				}
+			});
+		}
+
+		return relationships;
+	}
+
+	private extractTypeNames(typeString: string): string[] {
+		const nonClassTypes = new Set([
+			'string', 'number', 'boolean', 'void', 'any', 'unknown',
+			'never', 'null', 'undefined', 'Promise', 'Array', 'Map', 'Set'
+		]);
+		const types: string[] = [];
+		const identifierRegex = /\b([A-Z][a-zA-Z0-9]*)\b/g;
+		let match;
+		while ((match = identifierRegex.exec(typeString)) !== null) {
+			if (!nonClassTypes.has(match[1])) { types.push(match[1]); }
+		}
+		return types;
+	}
+
+	private extractClassInfo(node: ts.ClassDeclaration, filePath: string): ClassInfo {
+		const name = node.name?.getText() || 'Anonymous';
+		const properties: PropertyInfo[] = [];
+		const methods: MethodInfo[] = [];
+		let extendsClass: string | undefined;
+		const implementsInterfaces: string[] = [];
+
+		if (node.heritageClauses) {
+			for (const clause of node.heritageClauses) {
+				if (clause.token === ts.SyntaxKind.ExtendsKeyword) {
+					extendsClass = clause.types[0]?.expression.getText();
+				} else if (clause.token === ts.SyntaxKind.ImplementsKeyword) {
+					for (const type of clause.types) {
+						implementsInterfaces.push(type.expression.getText());
+					}
+				}
+			}
+		}
+
+		for (const member of node.members) {
+			if (ts.isPropertyDeclaration(member)) {
+				properties.push(this.extractProperty(member));
+			} else if (ts.isMethodDeclaration(member)) {
+				methods.push(this.extractMethod(member));
+			} else if (ts.isConstructorDeclaration(member)) {
+				methods.push(this.extractConstructor(member));
+			}
+		}
+
+		const isAbstract = node.modifiers?.some(m => m.kind === ts.SyntaxKind.AbstractKeyword) || false;
+		return {
+			name, filePath, properties, methods,
+			extends: extendsClass,
+			implements: implementsInterfaces.length > 0 ? implementsInterfaces : undefined,
+			isAbstract,
+			classType: isAbstract ? 'abstract' : 'class'
+		};
+	}
+
+	private extractInterfaceInfo(node: ts.InterfaceDeclaration, filePath: string): ClassInfo {
+		const name = node.name.getText();
+		const properties: PropertyInfo[] = [];
+		const methods: MethodInfo[] = [];
+		const implementsInterfaces: string[] = [];
+
+		if (node.heritageClauses) {
+			for (const clause of node.heritageClauses) {
+				for (const type of clause.types) {
+					implementsInterfaces.push(type.expression.getText());
+				}
+			}
+		}
+
+		for (const member of node.members) {
+			if (ts.isPropertySignature(member)) {
+				properties.push(this.extractPropertySignature(member));
+			} else if (ts.isMethodSignature(member)) {
+				methods.push(this.extractMethodSignature(member));
+			}
+		}
+
+		return {
+			name, filePath, properties, methods,
+			implements: implementsInterfaces.length > 0 ? implementsInterfaces : undefined,
+			isInterface: true,
+			classType: 'interface'
+		};
+	}
+
+	private extractProperty(node: ts.PropertyDeclaration): PropertyInfo {
+		const sourceFile = node.getSourceFile();
+		return {
+			name: node.name.getText(),
+			type: node.type?.getText() || 'any',
+			visibility: this.getVisibility(node),
+			isStatic: node.modifiers?.some(m => m.kind === ts.SyntaxKind.StaticKeyword) || false,
+			isReadonly: node.modifiers?.some(m => m.kind === ts.SyntaxKind.ReadonlyKeyword) || false,
+			lineNumber: sourceFile?.getLineAndCharacterOfPosition(node.getStart()).line + 1,
+			endLineNumber: sourceFile?.getLineAndCharacterOfPosition(node.getEnd()).line + 1,
+		};
+	}
+
+	private extractPropertySignature(node: ts.PropertySignature): PropertyInfo {
+		const sourceFile = node.getSourceFile();
+		return {
+			name: node.name.getText(),
+			type: node.type?.getText() || 'any',
+			visibility: 'public',
+			lineNumber: sourceFile?.getLineAndCharacterOfPosition(node.getStart()).line + 1,
+			endLineNumber: sourceFile?.getLineAndCharacterOfPosition(node.getEnd()).line + 1,
+		};
+	}
+
+	private extractMethod(node: ts.MethodDeclaration): MethodInfo {
+		const sourceFile = node.getSourceFile();
+		return {
+			name: node.name.getText(),
+			parameters: node.parameters.map(p => ({
+				name: p.name.getText(),
+				type: p.type?.getText() || 'any',
+				optional: !!p.questionToken
+			})),
+			returnType: node.type?.getText() || 'void',
+			visibility: this.getVisibility(node),
+			isStatic: node.modifiers?.some(m => m.kind === ts.SyntaxKind.StaticKeyword) || false,
+			isAsync: node.modifiers?.some(m => m.kind === ts.SyntaxKind.AsyncKeyword) || false,
+			lineNumber: sourceFile?.getLineAndCharacterOfPosition(node.getStart()).line + 1,
+			endLineNumber: sourceFile?.getLineAndCharacterOfPosition(node.getEnd()).line + 1,
+		};
+	}
+
+	private extractMethodSignature(node: ts.MethodSignature): MethodInfo {
+		const sourceFile = node.getSourceFile();
+		return {
+			name: node.name.getText(),
+			parameters: node.parameters.map(p => ({
+				name: p.name.getText(),
+				type: p.type?.getText() || 'any',
+				optional: !!p.questionToken
+			})),
+			returnType: node.type?.getText() || 'void',
+			visibility: 'public',
+			lineNumber: sourceFile?.getLineAndCharacterOfPosition(node.getStart()).line + 1,
+			endLineNumber: sourceFile?.getLineAndCharacterOfPosition(node.getEnd()).line + 1,
+		};
+	}
+
+	private extractConstructor(node: ts.ConstructorDeclaration): MethodInfo {
+		const sourceFile = node.getSourceFile();
+		return {
+			name: 'constructor',
+			parameters: node.parameters.map(p => ({
+				name: p.name.getText(),
+				type: p.type?.getText() || 'any',
+				optional: !!p.questionToken
+			})),
+			returnType: 'void',
+			visibility: 'public',
+			lineNumber: sourceFile?.getLineAndCharacterOfPosition(node.getStart()).line + 1,
+			endLineNumber: sourceFile?.getLineAndCharacterOfPosition(node.getEnd()).line + 1,
+		};
+	}
+
+	private extractModuleInfo(sourceFile: ts.SourceFile, filePath: string): ClassInfo | null {
+		const fileName = path.basename(filePath, path.extname(filePath));
+		const moduleName = `[${fileName}]`;
+		const properties: PropertyInfo[] = [];
+		const methods: MethodInfo[] = [];
+
+		sourceFile.forEachChild(node => {
+			if (ts.isFunctionDeclaration(node) && node.name) {
+				const isExported = node.modifiers?.some(
+					m => m.kind === ts.SyntaxKind.ExportKeyword || m.kind === ts.SyntaxKind.DefaultKeyword
+				);
+				if (isExported) {
+					methods.push({
+						name: node.name.getText(),
+						parameters: node.parameters.map(p => ({
+							name: p.name.getText(),
+							type: p.type?.getText() || 'any',
+							optional: !!p.questionToken
+						})),
+						returnType: node.type?.getText() || 'void',
+						visibility: 'public',
+						isStatic: true
+					});
+				}
+			}
+
+			if (ts.isVariableStatement(node)) {
+				const isExported = node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword);
+				for (const declaration of node.declarationList.declarations) {
+					if (ts.isIdentifier(declaration.name)) {
+						const name = declaration.name.getText();
+						const isConst = (node.declarationList.flags & ts.NodeFlags.Const) !== 0;
+						if (declaration.initializer &&
+							(ts.isArrowFunction(declaration.initializer) || ts.isFunctionExpression(declaration.initializer))) {
+							if (isExported) {
+								const funcNode = declaration.initializer;
+								methods.push({
+									name,
+									parameters: funcNode.parameters.map(p => ({
+										name: p.name.getText(),
+										type: p.type?.getText() || 'any',
+										optional: !!p.questionToken
+									})),
+									returnType: funcNode.type?.getText() || (name.match(/^[A-Z]/) ? 'JSX.Element' : 'any'),
+									visibility: 'public',
+									isStatic: true
+								});
+							}
+						} else if (isExported) {
+							properties.push({
+								name,
+								type: declaration.type?.getText() || 'inferred',
+								visibility: 'public',
+								isStatic: true,
+								isReadonly: isConst
+							});
+						}
+					}
+				}
+			}
+		});
+
+		if (properties.length === 0 && methods.length === 0) { return null; }
+		return { name: moduleName, filePath, properties, methods, isModule: true, classType: 'module' };
+	}
+
+	private getVisibility(node: ts.PropertyDeclaration | ts.MethodDeclaration): 'public' | 'private' | 'protected' {
+		if (node.modifiers?.some(m => m.kind === ts.SyntaxKind.PrivateKeyword)) { return 'private'; }
+		if (node.modifiers?.some(m => m.kind === ts.SyntaxKind.ProtectedKeyword)) { return 'protected'; }
+		return 'public';
+	}
+}
