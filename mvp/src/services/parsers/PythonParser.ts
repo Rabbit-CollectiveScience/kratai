@@ -1,0 +1,330 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import { IParserStrategy } from './IParserStrategy';
+import { ClassInfo, PropertyInfo, MethodInfo, ClassRelationship } from '../../types/diagram';
+
+/**
+ * Python parser for extracting classes, methods, and relationships
+ * Supports: Classes, inheritance, methods, properties (type hints and self.x)
+ */
+export class PythonParser implements IParserStrategy {
+	supportedExtensions = ['.py'];
+
+	parseFile(filePath: string): ClassInfo[] {
+		const classes: ClassInfo[] = [];
+
+		try {
+			const sourceCode = fs.readFileSync(filePath, 'utf-8');
+			const lines = sourceCode.split('\n');
+
+			let currentClass: any = null;
+			let currentMethod: any = null;
+			let currentIndent = 0;
+
+			for (let i = 0; i < lines.length; i++) {
+				const line = lines[i];
+				const trimmed = line.trim();
+				const indent = line.length - line.trimLeft().length;
+
+				// Skip empty lines and comments
+				if (!trimmed || trimmed.startsWith('#')) {
+					continue;
+				}
+
+				// Class definition: class ClassName(BaseClass):
+				const classMatch = trimmed.match(/^class\s+(\w+)(?:\(([^)]*)\))?:/);
+				if (classMatch) {
+					// Save previous class if exists
+					if (currentClass) {
+						classes.push(this.finishClass(currentClass, filePath));
+					}
+
+					const className = classMatch[1];
+					const bases = classMatch[2] ? classMatch[2].split(',').map(b => b.trim()) : [];
+
+					currentClass = {
+						name: className,
+						startLine: i + 1,
+						properties: [],
+						methods: [],
+						baseClasses: bases.filter(b => b && b !== 'object'),
+					};
+					currentIndent = indent;
+					currentMethod = null;
+					continue;
+				}
+
+				if (!currentClass) {
+					continue;
+				}
+
+				// Method definition: def method_name(self, ...):
+				const methodMatch = trimmed.match(/^def\s+(\w+)\s*\(([^)]*)\)\s*(?:->\s*(\w+))?:/);
+				if (methodMatch && indent > currentIndent) {
+					const methodName = methodMatch[1];
+					const paramsStr = methodMatch[2];
+					const returnType = methodMatch[3] || 'None';
+
+					// Parse parameters
+					const params = paramsStr
+						.split(',')
+						.map(p => p.trim())
+						.filter(p => p && p !== 'self')
+						.map(p => {
+							// Handle type hints: name: type = default
+							const paramMatch = p.match(/(\w+)(?:\s*:\s*(\w+))?(?:\s*=\s*(.+))?/);
+							if (paramMatch) {
+								return {
+									name: paramMatch[1],
+									type: paramMatch[2] || 'Any',
+									optional: !!paramMatch[3],
+								};
+							}
+							return { name: p, type: 'Any', optional: false };
+						});
+
+					currentMethod = {
+						name: methodName,
+						parameters: params,
+						returnType,
+						startLine: i + 1,
+					};
+
+					currentClass.methods.push(currentMethod);
+					continue;
+				}
+
+				// Property from type annotation: name: type = value
+				const propMatch = trimmed.match(/^(\w+)\s*:\s*(\w+)(?:\s*=\s*(.+))?/);
+				if (propMatch && indent > currentIndent && !currentMethod) {
+					const propName = propMatch[1];
+					const propType = propMatch[2];
+
+					if (!currentClass.properties.some((p: any) => p.name === propName)) {
+						currentClass.properties.push({
+							name: propName,
+							type: propType,
+							lineNumber: i + 1,
+						});
+					}
+					continue;
+				}
+
+				// Property from assignment: self.name = value
+				const selfMatch = trimmed.match(/^self\.(\w+)\s*=/);
+				if (selfMatch && currentMethod) {
+					const propName = selfMatch[1];
+
+					if (!currentClass.properties.some((p: any) => p.name === propName)) {
+						currentClass.properties.push({
+							name: propName,
+							type: 'Any',
+							lineNumber: i + 1,
+						});
+					}
+					continue;
+				}
+
+				// Track method end (when indentation decreases)
+				if (currentMethod && indent <= currentIndent) {
+					currentMethod.endLine = i;
+					currentMethod = null;
+				}
+			}
+
+			// Save last class
+			if (currentClass) {
+				classes.push(this.finishClass(currentClass, filePath));
+			}
+
+			// If no classes found, create a module-level entry
+			if (classes.length === 0) {
+				const moduleName = `[${path.basename(filePath, '.py')}]`;
+				const functions = this.extractModuleFunctions(lines);
+				if (functions.length > 0) {
+					classes.push({
+						name: moduleName,
+						filePath,
+						properties: [],
+						methods: functions,
+						isModule: true,
+						classType: 'module',
+					});
+				}
+			}
+		} catch (error) {
+			console.error(`Error parsing Python file ${filePath}:`, error);
+		}
+
+		return classes;
+	}
+
+	private finishClass(classData: any, filePath: string): ClassInfo {
+		// Set end line for last method if not set
+		if (classData.methods.length > 0) {
+			const lastMethod = classData.methods[classData.methods.length - 1];
+			if (!lastMethod.endLine) {
+				lastMethod.endLine = classData.startLine + 50; // Fallback
+			}
+		}
+
+		return {
+			name: classData.name,
+			filePath,
+			properties: classData.properties.map((p: any) => ({
+				name: p.name,
+				type: p.type,
+				visibility: 'public',
+				isStatic: false,
+				lineNumber: p.lineNumber,
+				endLineNumber: p.lineNumber,
+			})),
+			methods: classData.methods.map((m: any) => ({
+				name: m.name,
+				parameters: m.parameters,
+				returnType: m.returnType,
+				visibility: m.name.startsWith('_') ? 'private' : 'public',
+				isStatic: m.name === 'staticmethod' || m.name === 'classmethod',
+				isAsync: false,
+				lineNumber: m.startLine,
+				endLineNumber: m.endLine || m.startLine + 10,
+			})),
+			extends: classData.baseClasses.length > 0 ? classData.baseClasses[0] : undefined,
+			classType: 'class',
+		};
+	}
+
+	private extractModuleFunctions(lines: string[]): MethodInfo[] {
+		const functions: MethodInfo[] = [];
+
+		for (let i = 0; i < lines.length; i++) {
+			const line = lines[i];
+			const trimmed = line.trim();
+
+			// Skip if inside a class (indented)
+			if (line.length !== line.trimLeft().length) {
+				continue;
+			}
+
+			// Function definition: def function_name(...):
+			const funcMatch = trimmed.match(/^def\s+(\w+)\s*\(([^)]*)\)\s*(?:->\s*(\w+))?:/);
+			if (funcMatch) {
+				const funcName = funcMatch[1];
+				const paramsStr = funcMatch[2];
+				const returnType = funcMatch[3] || 'None';
+
+				// Parse parameters
+				const params = paramsStr
+					.split(',')
+					.map(p => p.trim())
+					.filter(p => p)
+					.map(p => {
+						const paramMatch = p.match(/(\w+)(?:\s*:\s*(\w+))?/);
+						return paramMatch
+							? { name: paramMatch[1], type: paramMatch[2] || 'Any', optional: false }
+							: { name: p, type: 'Any', optional: false };
+					});
+
+				functions.push({
+					name: funcName,
+					parameters: params,
+					returnType,
+					visibility: funcName.startsWith('_') ? 'private' : 'public',
+					isStatic: false,
+					isAsync: false,
+					lineNumber: i + 1,
+					endLineNumber: i + 20, // Rough estimate
+				});
+			}
+		}
+
+		return functions;
+	}
+
+	extractRelationships(classes: ClassInfo[], allClassNames: Set<string>): ClassRelationship[] {
+		const relationships: ClassRelationship[] = [];
+
+		for (const classInfo of classes) {
+			// Inheritance (extends)
+			if (classInfo.extends && allClassNames.has(classInfo.extends)) {
+				relationships.push({
+					from: classInfo.name,
+					to: classInfo.extends,
+					type: 'extends',
+				});
+			}
+
+			// Composition/Dependency from type hints
+			const dependencies = new Set<string>();
+
+			// Check properties
+			for (const prop of classInfo.properties) {
+				const types = this.extractTypeNames(prop.type);
+				types.forEach(type => {
+					if (allClassNames.has(type) && type !== classInfo.name) {
+						dependencies.add(type);
+					}
+				});
+			}
+
+			// Check method parameters and return types
+			for (const method of classInfo.methods) {
+				for (const param of method.parameters) {
+					const types = this.extractTypeNames(param.type);
+					types.forEach(type => {
+						if (allClassNames.has(type) && type !== classInfo.name) {
+							dependencies.add(type);
+						}
+					});
+				}
+
+				const returnTypes = this.extractTypeNames(method.returnType);
+				returnTypes.forEach(type => {
+					if (allClassNames.has(type) && type !== classInfo.name) {
+						dependencies.add(type);
+					}
+				});
+			}
+
+			// Add 'uses' relationships
+			dependencies.forEach(dep => {
+				// Don't add 'uses' if there's already an 'extends' relationship
+				const hasStrongerRelationship = relationships.some(
+					r => r.from === classInfo.name && r.to === dep && r.type === 'extends'
+				);
+
+				if (!hasStrongerRelationship) {
+					relationships.push({
+						from: classInfo.name,
+						to: dep,
+						type: 'uses',
+					});
+				}
+			});
+		}
+
+		return relationships;
+	}
+
+	private extractTypeNames(typeString: string): string[] {
+		if (!typeString || typeString === 'Any' || typeString === 'None') {
+			return [];
+		}
+
+		// Handle common Python type patterns:
+		// List[MyClass], Dict[str, MyClass], Optional[MyClass], Union[MyClass, Other]
+		const types: string[] = [];
+		const typePattern = /\b([A-Z][a-zA-Z0-9_]*)\b/g;
+		let match;
+
+		while ((match = typePattern.exec(typeString)) !== null) {
+			const typeName = match[1];
+			// Exclude built-in types
+			if (!['List', 'Dict', 'Set', 'Tuple', 'Optional', 'Union', 'Any', 'None'].includes(typeName)) {
+				types.push(typeName);
+			}
+		}
+
+		return types;
+	}
+}

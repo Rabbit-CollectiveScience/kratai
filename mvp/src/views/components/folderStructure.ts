@@ -23,9 +23,9 @@ export class FolderStructureBuilder {
 			const className = node.data.classInfo.name;
 			
 			// Match any file under src/, extracting the folder path
-			// Supports .ts, .tsx, .js, .jsx files
-			const matchWithFolder = filePath.match(/src\/(.+)\/[^\/]+\.(tsx?|jsx?)$/);
-			const matchDirectInSrc = filePath.match(/src\/[^\/]+\.(tsx?|jsx?)$/);
+			// Supports .ts, .tsx, .js, .jsx, .py files
+			const matchWithFolder = filePath.match(/src\/(.+)\/[^\/]+\.(tsx?|jsx?|py)$/);
+			const matchDirectInSrc = filePath.match(/src\/[^\/]+\.(tsx?|jsx?|py)$/);
 			
 			if (matchWithFolder) {
 				// File has a folder path like src/commands/file.ts or src/l1_ui/components/file.tsx
