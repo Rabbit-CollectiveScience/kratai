@@ -2,6 +2,11 @@
   "selectedFolders": [
     "01-basic-classes/src",
     "02-react-components/src",
+    "03-node-backend/src",
+    "03-node-backend/src/controllers",
+    "03-node-backend/src/models",
+    "03-node-backend/src/repositories",
+    "03-node-backend/src/services",
     "06-nextjs-app/src",
     "06-nextjs-app/src/app",
     "06-nextjs-app/src/app/api",
@@ -19,6 +24,7 @@
     "on",
     "on",
     "on",
+    "on",
     "on"
   ],
   "respectGitignore": true,
@@ -26,7 +32,8 @@
   "classTypeFilters": {
     "class": true,
     "interface": true,
-    "abstract": true
+    "abstract": true,
+    "module": true
   },
   "relationshipTypeFilters": {
     "extends": true,
@@ -38,5 +45,5 @@
     "enabled": true,
     "baseCommit": "HEAD~1"
   },
-  "lastUpdated": "2026-06-08T23:05:29.404Z"
+  "lastUpdated": "2026-06-09T06:56:14.119Z"
 }

@@ -171,9 +171,6 @@ export async function generateClassDiagramDirect(context: vscode.ExtensionContex
 							vscode.commands.executeCommand('kratai.showConfigPanel');
 							break;
 						case 'openMethodSequence':
-						// Get the viewColumn of the current panel
-						const targetColumn = panel.viewColumn || vscode.ViewColumn.One;
-						
 						// Trace method calls
 						vscode.window.withProgress({
 							location: vscode.ProgressLocation.Notification,
@@ -189,11 +186,11 @@ export async function generateClassDiagramDirect(context: vscode.ExtensionContex
 								10 // max depth
 							);
 							
-							// Open sequence diagram in the SAME viewColumn as class diagram
+							// Open sequence diagram beside the class diagram
 							const sequencePanel = vscode.window.createWebviewPanel(
 								'krataiSequenceDiagram',
 								`${message.className}.${message.methodName}()`,
-								targetColumn,
+								vscode.ViewColumn.Beside,
 								{
 									enableScripts: true,
 									retainContextWhenHidden: true,
