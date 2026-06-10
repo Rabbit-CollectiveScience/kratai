@@ -506,19 +506,33 @@ export class MethodTracerService {
 		}
 		
 		// Search all classes for this method (less accurate but better than nothing)
-		// Prefer concrete classes over interfaces
+		// Prefer classes from the same file extension (language) as currentClass
 		const candidates = diagramData.classes.filter(c => 
 			c.methods.some(m => m.name === methodName)
 		);
 		
+		if (candidates.length === 0) return null;
+		
+		// Extract file extension from currentClass
+		const currentExt = currentClass.filePath.match(/\.(ts|tsx|js|jsx|py|php)$/)?.[1];
+		
+		// Prefer candidates from same language
+		const sameLanguage = candidates.filter(c => {
+			const candExt = c.filePath.match(/\.(ts|tsx|js|jsx|py|php)$/)?.[1];
+			return candExt === currentExt;
+		});
+		
+		const prioritized = sameLanguage.length > 0 ? sameLanguage : candidates;
+		
 		// Sort: concrete classes first, then interfaces
-		candidates.sort((a, b) => {
+		prioritized.sort((a, b) => {
 			if (a.classType === 'interface' && b.classType !== 'interface') return 1;
 			if (a.classType !== 'interface' && b.classType === 'interface') return -1;
 			return 0;
 		});
 		
-		return candidates.length > 0 ? candidates[0] : null;
+		console.log(`    🔍 Resolved ${methodName}() to ${prioritized[0].name} (${prioritized[0].filePath})`);
+		return prioritized[0];
 	}
 	
 	/**
