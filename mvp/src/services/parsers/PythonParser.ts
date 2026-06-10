@@ -34,9 +34,10 @@ export class PythonParser implements IParserStrategy {
 				// Class definition: class ClassName(BaseClass):
 				const classMatch = trimmed.match(/^class\s+(\w+)(?:\(([^)]*)\))?:/);
 				if (classMatch) {
-					// Save previous class if exists
+					// Save previous class if exists (set its end line)
 					if (currentClass) {
-						classes.push(this.finishClass(currentClass, filePath));
+						currentClass.endLine = i; // Class ends where next class begins
+						classes.push(this.finishClass(currentClass, filePath, lines.length));
 					}
 
 					const className = classMatch[1];
@@ -45,6 +46,7 @@ export class PythonParser implements IParserStrategy {
 					currentClass = {
 						name: className,
 						startLine: i + 1,
+						endLine: undefined, // Will be set later
 						properties: [],
 						methods: [],
 						baseClasses: bases.filter(b => b && b !== 'object'),
@@ -132,9 +134,10 @@ export class PythonParser implements IParserStrategy {
 				}
 			}
 
-			// Save last class
+			// Save last class (set its end line to end of file)
 			if (currentClass) {
-				classes.push(this.finishClass(currentClass, filePath));
+				currentClass.endLine = lines.length;
+				classes.push(this.finishClass(currentClass, filePath, lines.length));
 			}
 
 			// If no classes found, create a module-level entry
@@ -156,15 +159,28 @@ export class PythonParser implements IParserStrategy {
 			console.error(`Error parsing Python file ${filePath}:`, error);
 		}
 
+		console.log(`✅ Python parser: ${classes.length} classes with properly detected method boundaries`);
 		return classes;
 	}
 
-	private finishClass(classData: any, filePath: string): ClassInfo {
-		// Set end line for last method if not set
+	private finishClass(classData: any, filePath: string, totalLines: number): ClassInfo {
+		// Properly set end lines for all methods based on next method's start or class end
 		if (classData.methods.length > 0) {
-			const lastMethod = classData.methods[classData.methods.length - 1];
-			if (!lastMethod.endLine) {
-				lastMethod.endLine = classData.startLine + 50; // Fallback
+			// Sort methods by start line to ensure correct order
+			classData.methods.sort((a: any, b: any) => a.startLine - b.startLine);
+			
+			for (let i = 0; i < classData.methods.length; i++) {
+				const method = classData.methods[i];
+				
+				if (!method.endLine) {
+					if (i < classData.methods.length - 1) {
+						// Method ends where next method starts (minus 1)
+						method.endLine = classData.methods[i + 1].startLine - 1;
+					} else {
+						// Last method ends where class ends
+						method.endLine = classData.endLine || totalLines;
+					}
+				}
 			}
 		}
 
@@ -187,7 +203,7 @@ export class PythonParser implements IParserStrategy {
 				isStatic: m.name === 'staticmethod' || m.name === 'classmethod',
 				isAsync: false,
 				lineNumber: m.startLine,
-				endLineNumber: m.endLine || m.startLine + 10,
+				endLineNumber: m.endLine,
 			})),
 			extends: classData.baseClasses.length > 0 ? classData.baseClasses[0] : undefined,
 			classType: 'class',
@@ -233,8 +249,19 @@ export class PythonParser implements IParserStrategy {
 					isStatic: false,
 					isAsync: false,
 					lineNumber: i + 1,
-					endLineNumber: i + 20, // Rough estimate
+					endLineNumber: i + 1, // Will be set properly below
 				});
+			}
+		}
+
+		// Sort and set proper end lines for module functions
+		functions.sort((a, b) => (a.lineNumber || 0) - (b.lineNumber || 0));
+		for (let i = 0; i < functions.length; i++) {
+			if (i < functions.length - 1) {
+				functions[i].endLineNumber = (functions[i + 1].lineNumber || 0) - 1;
+			} else {
+				// Last function ends at file end
+				functions[i].endLineNumber = lines.length;
 			}
 		}
 
