@@ -15,26 +15,49 @@ export class JavaScriptParser implements IParserStrategy {
 		try {
 			const sourceCode = fs.readFileSync(filePath, 'utf-8');
 
-			// TypeScript compiler can parse JS with allowJs
-			const sourceFile = ts.createSourceFile(
-				filePath,
-				sourceCode,
-				ts.ScriptTarget.Latest,
-				true,
-				filePath.endsWith('.jsx') ? ts.ScriptKind.JSX : ts.ScriptKind.JS
-			);
+			// Create a program with checkJs enabled to parse JSDoc types
+			const compilerOptions: ts.CompilerOptions = {
+				allowJs: true,
+				checkJs: true,
+				noEmit: true,
+				target: ts.ScriptTarget.Latest
+			};
+
+			const host = ts.createCompilerHost(compilerOptions);
+			const originalGetSourceFile = host.getSourceFile;
+			host.getSourceFile = (fileName, languageVersion) => {
+				if (fileName === filePath) {
+					return ts.createSourceFile(
+						fileName,
+						sourceCode,
+						languageVersion,
+						true,
+						filePath.endsWith('.jsx') ? ts.ScriptKind.JSX : ts.ScriptKind.JS
+					);
+				}
+				return originalGetSourceFile(fileName, languageVersion);
+			};
+
+			const program = ts.createProgram([filePath], compilerOptions, host);
+			const sourceFile = program.getSourceFile(filePath);
+			
+			if (!sourceFile) {
+				return classes;
+			}
+
+			const typeChecker = program.getTypeChecker();
 
 			const visit = (node: ts.Node) => {
 				// ES6 class declarations
 				if (ts.isClassDeclaration(node) && node.name) {
-					classes.push(this.extractClassInfo(node, filePath));
+					classes.push(this.extractClassInfo(node, filePath, typeChecker));
 				}
 				// Class expressions assigned to variables: const Foo = class { ... }
 				else if (ts.isVariableDeclaration(node) &&
 					node.initializer && ts.isClassExpression(node.initializer) &&
 					ts.isIdentifier(node.name)) {
 					classes.push(this.extractClassExpressionInfo(
-						node.name.getText(), node.initializer, filePath
+						node.name.getText(), node.initializer, filePath, typeChecker
 					));
 				}
 				ts.forEachChild(node, visit);
@@ -92,8 +115,13 @@ export class JavaScriptParser implements IParserStrategy {
 			const dependencies = new Set<string>();
 
 			for (const prop of classInfo.properties) {
-				this.extractTypeNames(prop.type).forEach(t => {
-					if (allClassNames.has(t) && t !== classInfo.name) { dependencies.add(t); }
+				const typeNames = this.extractTypeNames(prop.type);
+				console.log(`    🔗 JS property "${prop.name}: ${prop.type}" -> types: [${typeNames.join(', ')}]`);
+				typeNames.forEach(t => {
+					if (allClassNames.has(t) && t !== classInfo.name) { 
+						dependencies.add(t); 
+						console.log(`      ✅ Found dependency: ${classInfo.name} -> ${t}`);
+					}
 				});
 			}
 
@@ -115,23 +143,25 @@ export class JavaScriptParser implements IParserStrategy {
 		return relationships;
 	}
 
-	private extractClassInfo(node: ts.ClassDeclaration, filePath: string): ClassInfo {
+	private extractClassInfo(node: ts.ClassDeclaration, filePath: string, typeChecker?: ts.TypeChecker): ClassInfo {
 		const name = node.name?.getText() || 'Anonymous';
-		return this.extractClassMembers(name, node, filePath);
+		return this.extractClassMembers(name, node, filePath, typeChecker);
 	}
 
 	private extractClassExpressionInfo(
 		name: string,
 		node: ts.ClassExpression,
-		filePath: string
+		filePath: string,
+		typeChecker?: ts.TypeChecker
 	): ClassInfo {
-		return this.extractClassMembers(name, node, filePath);
+		return this.extractClassMembers(name, node, filePath, typeChecker);
 	}
 
 	private extractClassMembers(
 		name: string,
 		node: ts.ClassDeclaration | ts.ClassExpression,
-		filePath: string
+		filePath: string,
+		typeChecker?: ts.TypeChecker
 	): ClassInfo {
 		const properties: PropertyInfo[] = [];
 		const methods: MethodInfo[] = [];
@@ -148,9 +178,10 @@ export class JavaScriptParser implements IParserStrategy {
 		for (const member of node.members) {
 			if (ts.isPropertyDeclaration(member) && member.name) {
 				const sourceFile = member.getSourceFile();
+				const type = this.getTypeFromJSDoc(member, typeChecker) || member.type?.getText() || 'any';
 				properties.push({
 					name: member.name.getText(),
-					type: member.type?.getText() || 'any',
+					type,
 					visibility: 'public',
 					isStatic: member.modifiers?.some(m => m.kind === ts.SyntaxKind.StaticKeyword) || false,
 					lineNumber: sourceFile?.getLineAndCharacterOfPosition(member.getStart()).line + 1,
@@ -160,14 +191,16 @@ export class JavaScriptParser implements IParserStrategy {
 				const sourceFile = member.getSourceFile();
 				const isStatic = member.modifiers?.some(m => m.kind === ts.SyntaxKind.StaticKeyword) || false;
 				const isAsync = member.modifiers?.some(m => m.kind === ts.SyntaxKind.AsyncKeyword) || false;
+				const returnType = this.getReturnTypeFromJSDoc(member, typeChecker) || member.type?.getText() || 'any';
+				
 				methods.push({
 					name: member.name.getText(),
 					parameters: member.parameters.map(p => ({
 						name: p.name.getText(),
-						type: 'any',
+						type: this.getTypeFromJSDoc(p, typeChecker) || p.type?.getText() || 'any',
 						optional: !!p.questionToken
 					})),
-					returnType: 'any',
+					returnType,
 					visibility: 'public',
 					isStatic,
 					isAsync,
@@ -177,7 +210,7 @@ export class JavaScriptParser implements IParserStrategy {
 			} else if (ts.isConstructorDeclaration(member)) {
 				const sourceFile = member.getSourceFile();
 				// Extract this.x = ... assignments as properties
-				const ctorProps = this.extractConstructorProperties(member);
+				const ctorProps = this.extractConstructorProperties(member, sourceFile, typeChecker);
 				for (const prop of ctorProps) {
 					if (!properties.some(p => p.name === prop.name)) {
 						properties.push(prop);
@@ -187,7 +220,7 @@ export class JavaScriptParser implements IParserStrategy {
 					name: 'constructor',
 					parameters: member.parameters.map(p => ({
 						name: p.name.getText(),
-						type: 'any',
+						type: this.getTypeFromJSDoc(p, typeChecker) || p.type?.getText() || 'any',
 						optional: false
 					})),
 					returnType: 'void',
@@ -205,7 +238,7 @@ export class JavaScriptParser implements IParserStrategy {
 		};
 	}
 
-	private extractConstructorProperties(node: ts.ConstructorDeclaration): PropertyInfo[] {
+	private extractConstructorProperties(node: ts.ConstructorDeclaration, sourceFile: ts.SourceFile, typeChecker?: ts.TypeChecker): PropertyInfo[] {
 		const properties: PropertyInfo[] = [];
 
 		const visit = (n: ts.Node) => {
@@ -215,10 +248,40 @@ export class JavaScriptParser implements IParserStrategy {
 				ts.isPropertyAccessExpression(n.expression.left) &&
 				n.expression.left.expression.kind === ts.SyntaxKind.ThisKeyword) {
 				const propName = n.expression.left.name.getText();
+				
+				// Try multiple approaches to get the type
+				let type = 'any';
+				
+				// 1. Try JSDoc comment from the statement
+				const jsDocComment = (n as any).jsDoc;
+				if (jsDocComment && jsDocComment.length > 0) {
+					const typeTag = jsDocComment[0].tags?.find((tag: any) => tag.kind === ts.SyntaxKind.JSDocTypeTag);
+					if (typeTag && typeTag.typeExpression) {
+						type = typeTag.typeExpression.type.getText();
+					}
+				}
+				
+				// 2. If typeChecker available, try to infer type from the assignment
+				if (type === 'any' && typeChecker) {
+					try {
+						const tsType = typeChecker.getTypeAtLocation(n.expression.right);
+						const typeString = typeChecker.typeToString(tsType);
+						if (typeString && typeString !== 'any') {
+							type = typeString;
+						}
+					} catch (e) {
+						// Ignore type checker errors
+					}
+				}
+				
+				console.log(`    📝 JS constructor property: this.${propName} = ... -> type: ${type}`);
+				
 				properties.push({
 					name: propName,
-					type: 'any',
+					type,
 					visibility: 'public',
+					lineNumber: sourceFile?.getLineAndCharacterOfPosition(n.getStart()).line + 1,
+					endLineNumber: sourceFile?.getLineAndCharacterOfPosition(n.getEnd()).line + 1,
 				});
 			}
 			ts.forEachChild(n, visit);
@@ -293,5 +356,68 @@ export class JavaScriptParser implements IParserStrategy {
 			if (!nonClassTypes.has(match[1])) { types.push(match[1]); }
 		}
 		return types;
+	}
+
+	/**
+	 * Extract type from JSDoc @type or @param annotations
+	 */
+	private getTypeFromJSDoc(node: ts.Node, typeChecker?: ts.TypeChecker): string | undefined {
+		if (!typeChecker) return undefined;
+
+		const symbol = typeChecker.getSymbolAtLocation(node);
+		if (!symbol) return undefined;
+
+		// Try to get type from JSDoc tags
+		const jsDocTags = symbol.getJsDocTags();
+		for (const tag of jsDocTags) {
+			if (tag.name === 'type') {
+				return tag.text?.map((t: any) => t.text).join('') || undefined;
+			}
+		}
+
+		// For parameters, check parent function's @param tags
+		if (ts.isParameter(node) && node.parent) {
+			const paramName = node.name.getText();
+			const jsDocs = (node.parent as any).jsDoc;
+			if (jsDocs) {
+				for (const jsDoc of jsDocs) {
+					if (jsDoc.tags) {
+						for (const tag of jsDoc.tags) {
+							if (tag.kind === ts.SyntaxKind.JSDocParameterTag && 
+								tag.name?.getText() === paramName &&
+								tag.typeExpression) {
+								return tag.typeExpression.type.getText();
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return undefined;
+	}
+
+	/**
+	 * Extract return type from JSDoc @returns annotation
+	 */
+	private getReturnTypeFromJSDoc(node: ts.MethodDeclaration, typeChecker?: ts.TypeChecker): string | undefined {
+		if (!typeChecker) return undefined;
+
+		const jsDocs = (node as any).jsDoc;
+		if (jsDocs) {
+			for (const jsDoc of jsDocs) {
+				if (jsDoc.tags) {
+					for (const tag of jsDoc.tags) {
+						if ((tag.kind === ts.SyntaxKind.JSDocReturnTag || 
+							 tag.kind === ts.SyntaxKind.JSDocReturnTag) &&
+							tag.typeExpression) {
+							return tag.typeExpression.type.getText();
+						}
+					}
+				}
+			}
+		}
+
+		return undefined;
 	}
 }
