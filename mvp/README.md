@@ -2,6 +2,8 @@
 
 Understand your codebase at a glance across **TypeScript, JavaScript, Python, and PHP**. Kratai generates interactive **class diagrams** and **sequence diagrams** directly inside VS Code, with **git diff highlighting** so you can instantly see what changed between commits.
 
+![Kratai Demo](demo/demo.gif)
+
 ---
 
 ## Features
@@ -13,11 +15,15 @@ Understand your codebase at a glance across **TypeScript, JavaScript, Python, an
 - Draws relationships: inheritance, implementation, and usage
 - **Multi-language support** — handles polyglot codebases (e.g., TS frontend + Python backend)
 
+![Class Diagram Example](demo/demo_ss_1.png)
+
 ### Git Diff Highlighting
 - **Green** — added classes or methods
 - **Yellow** — modified classes or methods
 - **Red** — deleted classes or methods
 - Compares against the previous commit automatically
+
+![Git Diff Highlighting](demo/demo_ss_2.png)
 
 ### Sequence Diagram
 - Click any method in the class diagram to trace its full call chain
@@ -27,11 +33,15 @@ Understand your codebase at a glance across **TypeScript, JavaScript, Python, an
 - Supports static calls, instance calls, and chained calls
 - **Supports:** TypeScript, JavaScript, Python, and PHP
 
+![Sequence Diagram Example](demo/demo_ss_3.png)
+
 ### Sidebar Actions
 - **Generate Class Diagram** — scan and visualize your entire codebase
 - **Show Git Changes** — summary of all changed files vs previous commit
 - **Settings** — configure which folders to include, file types, and filters
 - **Community & Feedback** — link to GitHub Discussions
+
+![Configuration Panel](demo/demo_ss_4.png)
 
 ---
 
