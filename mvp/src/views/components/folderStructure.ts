@@ -10,8 +10,8 @@ export interface FolderNode {
 export class FolderStructureBuilder {
 	static build(nodes: ReactFlowNode[]): FolderNode {
 		const root: FolderNode = { 
-			name: 'src', 
-			fullPath: 'src', 
+			name: 'workspace', 
+			fullPath: '', 
 			children: new Map(), 
 			classes: [] 
 		};
@@ -22,20 +22,27 @@ export class FolderStructureBuilder {
 			const filePath = node.data.classInfo.filePath;
 			const className = node.data.classInfo.name;
 			
-			// Match any file under src/, extracting the folder path
+			// Match the full path structure, capturing everything before the file
 			// Supports .ts, .tsx, .js, .jsx, .py, .php files
-			const matchWithFolder = filePath.match(/src\/(.+)\/[^\/]+\.(tsx?|jsx?|py|php)$/);
-			const matchDirectInSrc = filePath.match(/src\/[^\/]+\.(tsx?|jsx?|py|php)$/);
+			const matchPath = filePath.match(/^(.+)\/[^\/]+\.(tsx?|jsx?|py|php)$/);
 			
-			if (matchWithFolder) {
-				// File has a folder path like src/commands/file.ts or src/l1_ui/components/file.tsx
-				const pathParts = matchWithFolder[1].split('/');
+			if (matchPath) {
+				// File has a folder path - split into parts
+				const fullFolderPath = matchPath[1];
+				const pathParts = fullFolderPath.split('/').filter(p => p.length > 0);
+				
+				// Skip common prefixes that aren't meaningful (like 'src' alone)
+				// But keep the full hierarchy to avoid collisions
+				if (pathParts.length === 0) {
+					root.classes.push(node);
+					return;
+				}
 				
 				let current = root;
-				let currentPath = 'src';
+				let currentPath = '';
 				
 				pathParts.forEach(part => {
-					currentPath += '/' + part;
+					currentPath = currentPath ? currentPath + '/' + part : part;
 					if (!current.children.has(part)) {
 						current.children.set(part, {
 							name: part,
@@ -48,11 +55,8 @@ export class FolderStructureBuilder {
 				});
 				
 				current.classes.push(node);
-			} else if (matchDirectInSrc) {
-				// File is directly in src/ (like src/Animal.js) - add to root without warning
-				root.classes.push(node);
 			} else {
-				// File doesn't match any expected pattern
+				// File doesn't have a folder path (shouldn't happen with valid code)
 				console.warn(`⚠️ ${className}: Path "${filePath}" didn't match expected pattern - adding to root`);
 				unmatchedFiles.push(`${className} @ ${filePath}`);
 				root.classes.push(node);
