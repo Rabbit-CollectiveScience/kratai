@@ -3,6 +3,7 @@ import * as ts from 'typescript';
 import * as path from 'path';
 import { DiagramData, ClassInfo, MethodInfo } from '../types/diagram';
 import { GitDiffService } from './gitDiffService';
+import { extractMethodCallsPython } from './methodCallExtractors';
 
 export interface MethodCall {
 	fromClass: string;
@@ -201,9 +202,24 @@ export class MethodTracerService {
 			return;
 		}
 		
-		// Extract method calls
-		const methodCalls = this.extractMethodCalls(methodNode);
-		console.log(`  📞 Found ${methodCalls.length} calls in ${classInfo.name}.${method.name}()`);
+		// Check if this is a Python file and use appropriate extractor
+		const isPythonFile = fullPath.endsWith('.py');
+		let methodCalls: Array<{
+			methodName: string;
+			objectName: string | null;
+			previousCall?: { objectName: string | null; methodName: string };
+			lineNumber?: number;
+		}>;
+
+		if (isPythonFile) {
+			// Extract method calls using Python extractor
+			methodCalls = extractMethodCallsPython(sourceCode, classInfo.name, method.name);
+			console.log(`  📞 Found ${methodCalls.length} calls in ${classInfo.name}.${method.name}()`);
+		} else {
+			// Extract method calls using TypeScript extractor
+			methodCalls = this.extractMethodCalls(methodNode);
+			console.log(`  📞 Found ${methodCalls.length} calls in ${classInfo.name}.${method.name}()`);
+		}
 		
 		// Process each call
 		for (const call of methodCalls) {

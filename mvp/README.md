@@ -24,8 +24,8 @@ Understand your codebase at a glance across **TypeScript, JavaScript, Python, an
 - Shows which classes and instances are involved at each step
 - Call site highlighting — new method calls appear green, removed calls red
 - Supports static calls, instance calls, and chained calls
-- **Currently supports:** TypeScript and JavaScript files
-- **Coming soon:** Python and PHP support (infrastructure ready)
+- **Supports:** TypeScript, JavaScript, and Python
+- **Coming soon:** PHP support
 
 ### Sidebar Actions
 - **Generate Class Diagram** — scan and visualize your entire codebase
@@ -79,7 +79,7 @@ Kratai stores its settings in `.vscode/kratai.json` in your workspace. You can c
 ## Known Issues
 
 - Very large codebases (1000+ classes) may render slowly
-- Sequence diagram tracing is currently TypeScript and JavaScript only (Python/PHP support in development)
+- Sequence diagram tracing supports TypeScript, JavaScript, and Python (PHP support coming soon)
 
 ---
 
