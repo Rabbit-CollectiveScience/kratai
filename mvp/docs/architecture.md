@@ -200,6 +200,49 @@ const matchDirectInSrc = filePath.match(/src\/[^\/]+\.(tsx?|jsx?|py)$/);
 
 ---
 
+### 🔧 Parser Implementation Details
+
+#### JavaScript Parser - JSDoc Type Support
+```typescript
+// Creates TypeScript program with checkJs enabled to parse JSDoc
+const compilerOptions: ts.CompilerOptions = {
+    allowJs: true,
+    checkJs: true,  // Enables JSDoc type checking
+    noEmit: true,
+};
+const program = ts.createProgram([filePath], compilerOptions, host);
+const typeChecker = program.getTypeChecker();
+
+// Extract types from JSDoc @type, @param, @returns annotations
+const jsDocTags = symbol.getJsDocTags();
+const type = tag.text?.map((t: any) => t.text).join('');
+```
+
+**Supported JSDoc patterns:**
+- `/** @type {Map<number, Product>} */` on properties
+- `@param {string} name` in method documentation
+- `@returns {Product}` for return types
+- Type inference from assignments when JSDoc missing
+
+#### Python Parser - Complex Type Hint Support
+```typescript
+// Handles complex type expressions in return hints
+const returnTypeMatch = line.match(/->\\s*([^:]+):/);
+if (returnTypeMatch) {
+    // Captures: Optional[Product], List[str], Dict[str, int], etc.
+    returnType = returnTypeMatch[1].trim();
+}
+```
+
+**Supported type patterns:**
+- Simple: `str`, `int`, `bool`, `Product`
+- Generic: `Optional[T]`, `List[T]`, `Dict[K,V]`
+- Union: `Union[str, int]`, `str | int` (Python 3.10+)
+- Tuple: `Tuple[int, str, bool]`
+- Nested: `List[Optional[Product]]`, `Dict[str, List[int]]`
+
+---
+
 ### ⚠️ Critical Best Practices
 
 #### 1. **Always Include Line Numbers**

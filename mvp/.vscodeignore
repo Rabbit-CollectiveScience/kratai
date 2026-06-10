@@ -10,3 +10,12 @@ vsc-extension-quickstart.md
 **/*.ts
 **/.vscode-test.*
 config.example.json
+test-fixtures/**
+docs/**
+*.log
+.git/**
+.github/**
+node_modules/**/.bin/**
+**/*.md.backup
+**/.DS_Store
+coverage/**

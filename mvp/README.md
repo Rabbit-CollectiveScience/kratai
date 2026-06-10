@@ -22,6 +22,7 @@ Understand your codebase at a glance across **TypeScript, JavaScript, Python, an
 ### Sequence Diagram
 - Click any method in the class diagram to trace its full call chain
 - Shows which classes and instances are involved at each step
+- Entry and exit arrows clearly mark method invocation and return
 - Call site highlighting — new method calls appear green, removed calls red
 - Supports static calls, instance calls, and chained calls
 - **Supports:** TypeScript, JavaScript, Python, and PHP
@@ -57,8 +58,8 @@ Understand your codebase at a glance across **TypeScript, JavaScript, Python, an
 | Language | Status | Parser | Features |
 |---|---|---|---|
 | **TypeScript** | ✅ Full Support | TypeScriptParser | Generics, decorators, interfaces, React/NestJS patterns |
-| **JavaScript** | ✅ Full Support | JavaScriptParser | ES6 classes, JSX, React hooks, function components |
-| **Python** | ✅ Full Support | PythonParser | Type hints, async/await, Flask/FastAPI, protocols |
+| **JavaScript** | ✅ Full Support | JavaScriptParser | ES6 classes, JSX, JSDoc type annotations, React hooks |
+| **Python** | ✅ Full Support | PythonParser | Complex type hints (Optional, List, Dict), async/await, protocols |
 | **PHP** | ✅ Full Support | PHPParser | PHP 7.4+/8.0+ type hints, Laravel/Symfony, traits |
 
 ---
@@ -83,11 +84,17 @@ Kratai stores its settings in `.vscode/kratai.json` in your workspace. You can c
 
 ## Release Notes
 
+### 1.0.1
+- **Enhanced JavaScript parser** — JSDoc type annotations now parsed for accurate relationship detection
+- **Improved Python parser** — Complex type hints like `Optional[Product]`, `List[str]`, `Dict[str, int]` fully supported
+- **Better sequence diagrams** — Entry/exit arrows clearly show method invocation and return points
+- **Bug fixes** — JavaScript classes now show relationship arrows based on JSDoc types
+
 ### 1.0.0
 - **Multi-language support** — TypeScript, JavaScript, Python, and PHP
 - Interactive class diagram with folder-based layout
 - **Strategy Pattern architecture** — Add new languages with ~10 lines of code
-- Sequence diagram generation by clicking any method (TypeScript)
+- Sequence diagram generation by clicking any method
 - Git diff highlighting — added, modified, and deleted detection
 - **Unique ID system** — Handles same class names across languages
 - Configurable folder and class type filters
