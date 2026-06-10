@@ -61,44 +61,46 @@ export class PythonParser implements IParserStrategy {
 				}
 
 				// Method definition: def method_name(self, ...):
-				const methodMatch = trimmed.match(/^def\s+(\w+)\s*\(([^)]*)\)\s*(?:->\s*(\w+))?:/);
-				if (methodMatch && indent > currentIndent) {
-					const methodName = methodMatch[1];
-					const paramsStr = methodMatch[2];
-					const returnType = methodMatch[3] || 'None';
+			// Support complex return types like Optional[Product], List[str], etc.
+			const methodMatch = trimmed.match(/^def\s+(\w+)\s*\(([^)]*)\)\s*(?:->\s*([^:]+))?:/);
+			if (methodMatch && indent > currentIndent) {
+				const methodName = methodMatch[1];
+				const paramsStr = methodMatch[2];
+				const returnType = methodMatch[3]?.trim() || 'None';
 
-					// Parse parameters
-					const params = paramsStr
-						.split(',')
-						.map(p => p.trim())
-						.filter(p => p && p !== 'self')
-						.map(p => {
-							// Handle type hints: name: type = default
-							const paramMatch = p.match(/(\w+)(?:\s*:\s*(\w+))?(?:\s*=\s*(.+))?/);
-							if (paramMatch) {
-								return {
-									name: paramMatch[1],
-									type: paramMatch[2] || 'Any',
-									optional: !!paramMatch[3],
-								};
-							}
-							return { name: p, type: 'Any', optional: false };
-						});
+				// Parse parameters
+				const params = paramsStr
+					.split(',')
+					.map(p => p.trim())
+					.filter(p => p && p !== 'self')
+					.map(p => {
+						// Handle type hints: name: type = default
+						const paramMatch = p.match(/(\w+)(?:\s*:\s*([^=]+))?(?:\s*=\s*(.+))?/);
+						if (paramMatch) {
+							return {
+								name: paramMatch[1],
+								type: paramMatch[2]?.trim() || 'Any',
+								optional: !!paramMatch[3],
+							};
+						}
+						return { name: p, type: 'Any', optional: false };
+					});
 
-					currentMethod = {
-						name: methodName,
-						parameters: params,
-						returnType,
-						startLine: i + 1,
-					};
+				currentMethod = {
+					name: methodName,
+					parameters: params,
+					returnType,
+					startLine: i + 1,
+				};
 
-					currentClass.methods.push(currentMethod);
-					continue;
-				}
+				currentClass.methods.push(currentMethod);
+				console.log(`    📌 Found method: ${methodName}() at line ${i + 1} -> ${returnType}`);
+			continue;
+		}
 
-				// Property from type annotation: name: type = value
-				const propMatch = trimmed.match(/^(\w+)\s*:\s*(\w+)(?:\s*=\s*(.+))?/);
-				if (propMatch && indent > currentIndent && !currentMethod) {
+		// Property from type annotation: name: type = value
+		const propMatch = trimmed.match(/^(\w+)\s*:\s*(\w+)(?:\s*=\s*(.+))?/);
+		if (propMatch && indent > currentIndent && !currentMethod) {
 					const propName = propMatch[1];
 					const propType = propMatch[2];
 
