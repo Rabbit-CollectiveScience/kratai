@@ -136,71 +136,8 @@ export class MethodTracerService {
 			console.warn(`❌ File not found: ${fullPath}`);
 			return;
 		}
-		
+
 		const sourceCode = fs.readFileSync(fullPath, 'utf-8');
-		const sourceFile = ts.createSourceFile(
-			fullPath,
-			sourceCode,
-			ts.ScriptTarget.Latest,
-			true
-		);
-		
-		// Find the method node
-		const methodNode = this.findMethodNode(sourceFile, classInfo.name, method.name);
-		if (!methodNode) {
-			console.warn(`❌ Method AST node not found: ${method.name}`);
-			
-			// Check if this is an interface - try to find concrete implementation
-			if (classInfo.classType === 'interface') {
-				console.log(`🔍 Interface method detected, searching for concrete implementations...`);
-				const implementations = this.findInterfaceImplementations(classInfo, diagramData);
-				
-				if (implementations.length > 0) {
-					console.log(`✅ Found ${implementations.length} implementations: ${implementations.map(c => c.name).join(', ')}`);
-					
-					// Trace each implementation
-					for (const implClass of implementations) {
-						const implMethod = implClass.methods.find(m => m.name === method.name);
-						if (implMethod) {
-							console.log(`  → Tracing implementation in ${implClass.name}`);
-							const isStatic = implMethod.isStatic || false;
-							const instanceName = isStatic ? implClass.name : `:${implClass.name}`;
-							actors.add(instanceName);
-							
-							// Add call from interface to implementation
-							calls.push({
-								fromClass: currentActorName,  // Use current actor name
-								fromMethod: method.name,
-								toClass: implClass.name,
-								toMethod: implMethod.name,
-								toInstance: undefined,
-								isStatic: isStatic,
-								depth: depth,
-								changeStatus: implMethod.changeStatus || 'unchanged'
-							});
-							
-							// Continue tracing the implementation
-							this.traceMethodRecursive(
-								implClass,
-								implMethod,
-								workspacePath,
-								diagramData,
-								actors,
-								calls,
-								visited,
-								depth + 1,
-								maxDepth,
-								instanceName,  // Pass instance name to recursive call
-								addedLines,
-								deletedLines
-							);
-						}
-					}
-				}
-			}
-			
-			return;
-		}
 		
 		// Check file type and use appropriate extractor
 		const isPythonFile = fullPath.endsWith('.py');
@@ -221,6 +158,71 @@ export class MethodTracerService {
 			methodCalls = extractMethodCallsPHP(sourceCode, classInfo.name, method.name);
 			console.log(`  📞 Found ${methodCalls.length} calls in ${classInfo.name}.${method.name}()`);
 		} else {
+			// TypeScript/JavaScript - use AST-based approach
+			const sourceFile = ts.createSourceFile(
+				fullPath,
+				sourceCode,
+				ts.ScriptTarget.Latest,
+				true
+			);
+
+			// Find the method node
+			const methodNode = this.findMethodNode(sourceFile, classInfo.name, method.name);
+			if (!methodNode) {
+				console.warn(`❌ Method AST node not found: ${method.name}`);
+
+				// Check if this is an interface - try to find concrete implementation
+				if (classInfo.classType === 'interface') {
+					console.log(`🔍 Interface method detected, searching for concrete implementations...`);
+					const implementations = this.findInterfaceImplementations(classInfo, diagramData);
+
+					if (implementations.length > 0) {
+						console.log(`✅ Found ${implementations.length} implementations: ${implementations.map(c => c.name).join(', ')}`);
+
+						// Trace each implementation
+						for (const implClass of implementations) {
+							const implMethod = implClass.methods.find(m => m.name === method.name);
+							if (implMethod) {
+								console.log(`  → Tracing implementation in ${implClass.name}`);
+								const isStatic = implMethod.isStatic || false;
+								const instanceName = isStatic ? implClass.name : `:${implClass.name}`;
+								actors.add(instanceName);
+
+								// Add call from interface to implementation
+								calls.push({
+									fromClass: currentActorName,  // Use current actor name
+									fromMethod: method.name,
+									toClass: implClass.name,
+									toMethod: implMethod.name,
+									toInstance: undefined,
+									isStatic: isStatic,
+									depth: depth,
+									changeStatus: implMethod.changeStatus || 'unchanged'
+								});
+
+								// Continue tracing the implementation
+								this.traceMethodRecursive(
+									implClass,
+									implMethod,
+									workspacePath,
+									diagramData,
+									actors,
+									calls,
+									visited,
+									depth + 1,
+									maxDepth,
+									instanceName,  // Pass instance name to recursive call
+									addedLines,
+									deletedLines
+								);
+							}
+						}
+					}
+				}
+
+				return;
+			}
+
 			// Extract method calls using TypeScript extractor
 			methodCalls = this.extractMethodCalls(methodNode);
 			console.log(`  📞 Found ${methodCalls.length} calls in ${classInfo.name}.${method.name}()`);

@@ -209,19 +209,28 @@ export function extractMethodCallsPython(
 			const line = lines[i];
 			currentLineNum = i + 1;
 
-			// Check if we're entering the method
-			const methodMatch = line.match(/^(\s*)def\s+(\w+)\s*\(/);
-			if (methodMatch && methodMatch[2] === methodName) {
+			// Check if we're entering the method (allow any indentation for class methods)
+			const methodMatch = line.match(/^\s*def\s+(\w+)\s*\(/);
+			if (methodMatch && methodMatch[1] === methodName) {
 				inMethod = true;
-				methodIndent = methodMatch[1].length;
+				// Calculate the indentation level of this method
+				methodIndent = line.match(/^(\s*)/)?.[1].length || 0;
+				console.log(`      🔍 Found Python method "${methodName}" at line ${currentLineNum} (indent: ${methodIndent})`);
 				continue;
 			}
 
-			// Check if we've left the method (dedent or new def)
+			// Check if we've left the method
 			if (inMethod) {
 				const currentIndent = line.match(/^(\s*)/)?.[1].length || 0;
-				if (line.trim() && currentIndent <= methodIndent && !line.trim().startsWith('#')) {
-					break; // Exit method
+				const trimmed = line.trim();
+				
+				// Exit if we hit another def at same or lower indent, or dedent to class/module level
+				if (trimmed && (
+					(trimmed.startsWith('def ') && currentIndent <= methodIndent) ||
+					(currentIndent < methodIndent && trimmed && !trimmed.startsWith('#'))
+				)) {
+					console.log(`      ⬅️ Exiting method at line ${currentLineNum} (indent ${currentIndent} vs ${methodIndent})`);
+					break;
 				}
 
 				// Look for method calls: obj.method() or self.method()
@@ -239,6 +248,12 @@ export function extractMethodCallsPython(
 					console.log(`      📞 Found Python call to ${methName}() at line ${currentLineNum}`);
 				}
 			}
+		}
+		
+		if (!inMethod) {
+			console.warn(`      ⚠️ Python method "${methodName}" not found in class "${className}"`);
+		} else {
+			console.log(`      ✅ Python extractor found ${calls.length} calls in ${className}.${methodName}()`);
 		}
 	} catch (error) {
 		console.error(`❌ Error parsing Python: ${error}`);
