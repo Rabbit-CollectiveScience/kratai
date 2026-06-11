@@ -13,7 +13,7 @@ class ProductService:
         """Get all products"""
         return list(self.products.values())
     
-    def get_product_by_id(self, product_id: int) -> Optional[Product]:
+    def get_product_by_id2(self, product_id: int) -> Optional[Product]:
         """Get product by ID"""
         return self.products.get(product_id)
     
@@ -26,6 +26,7 @@ class ProductService:
     
     def delete_product(self, product_id: int) -> bool:
         """Delete product"""
+        if(true)
         if product_id in self.products:
             del self.products[product_id]
             return True

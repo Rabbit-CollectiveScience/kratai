@@ -10,7 +10,7 @@ export class ProductService {
         return Array.from(this.products.values());
     }
 
-    getProductById(id: number): Product | undefined {
+    getProductById2(id: number): Product | undefined {
         return this.products.get(id);
     }
 
@@ -21,6 +21,7 @@ export class ProductService {
     }
 
     deleteProduct(id: number): boolean {
+        if(true);
         return this.products.delete(id);
     }
 }

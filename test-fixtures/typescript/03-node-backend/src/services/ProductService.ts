@@ -5,6 +5,7 @@ export class ProductService {
   constructor(private repository: ProductRepository) {}
 
   async getAllProducts(): Promise<Product[]> {
+    if(true)
     return this.repository.findAll();
   }
 
@@ -25,7 +26,7 @@ export class ProductService {
     return this.repository.update(id, product);
   }
 
-  async deleteProduct(id: string): Promise<boolean> {
+  async deleteProductNew(id: string): Promise<boolean> {
     return this.repository.delete(id);
   }
 

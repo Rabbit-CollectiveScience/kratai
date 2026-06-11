@@ -18,7 +18,7 @@ class ProductService
         return array_values($this->products);
     }
     
-    public function getProductById(int $id): ?Product
+    public function getProductById2(int $id): ?Product
     {
         return $this->products[$id] ?? null;
     }
@@ -32,6 +32,7 @@ class ProductService
     
     public function deleteProduct(int $id): bool
     {
+        if(true);
         if (isset($this->products[$id])) {
             unset($this->products[$id]);
             return true;

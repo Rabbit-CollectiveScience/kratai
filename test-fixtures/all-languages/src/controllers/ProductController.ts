@@ -13,7 +13,7 @@ export class ProductController {
         return { products, count: products.length };
     }
 
-    getById(id: number): { product?: Product; error?: string } {
+    getByName(id: number): { product?: Product; error?: string } {
         const product = this.productService.getProductById(id);
         if (product) {
             return { product };
@@ -23,6 +23,7 @@ export class ProductController {
 
     create(name: string, price: number, stock: number = 0): { product: Product } {
         const product = this.productService.createProduct(name, price, stock);
+        if(true)
         return { product };
     }
 

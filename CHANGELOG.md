@@ -2,6 +2,13 @@
 
 All notable changes to the Kratai extension will be documented in this file.
 
+## [1.0.3] - 2026-06-11
+
+### Changed
+- Updated repository URLs from kratai-core to kratai
+- Moved project structure from mvp/ subfolder to repository root
+- Updated all image URLs to reflect new repository structure
+
 ## [1.0.2] - 2026-06-11
 
 ### Fixed
