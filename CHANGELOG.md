@@ -2,6 +2,38 @@
 
 All notable changes to the Kratai extension will be documented in this file.
 
+## [1.0.9] - 2026-06-12
+
+### Fixed
+- **CRITICAL FIX**: Moved `typescript` from devDependencies to dependencies
+- Extension was crashing with "Cannot find module 'typescript'" error at runtime
+- TypeScript module now properly bundled with extension package
+
+## [1.0.8] - 2026-06-12
+
+### Fixed
+- Changed activation event to "*" (immediate activation) for debugging
+- This forces extension to load immediately on VS Code startup to diagnose sidebar issues
+
+## [1.0.7] - 2026-06-12
+
+### Fixed
+- Changed activation event to `onStartupFinished` to ensure extension loads immediately on VS Code startup
+- Added debug logging to track extension activation and tree provider registration
+- Improved error diagnostics for sidebar loading issues
+
+## [1.0.6] - 2026-06-12
+
+### Fixed
+- **CRITICAL**: Added missing activation event `onView:kratai-actions` - extension now activates when sidebar is opened
+- This fixes the "no data provider registered" error that prevented the sidebar from loading
+
+## [1.0.5] - 2026-06-12
+
+### Fixed
+- Fixed "no data provider registered" error in sidebar by properly subscribing tree data provider to extension context
+- Sidebar actions panel now displays correctly on extension activation
+
 ## [1.0.4] - 2026-06-11
 
 ### Changed

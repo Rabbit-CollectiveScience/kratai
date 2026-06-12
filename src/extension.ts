@@ -9,15 +9,18 @@ import { TelemetryService } from './services/telemetryService';
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 
-	console.log('Congratulations, your extension "kratai" is now active!');
+	console.log('🐰 Kratai extension is now activating...');
 
 	// Initialize telemetry (respects VS Code's telemetry.telemetryLevel setting automatically)
 	TelemetryService.initialize();
 	context.subscriptions.push({ dispose: () => TelemetryService.dispose() });
 
 	// Register sidebar view
+	console.log('🐰 Registering tree data provider for kratai-actions...');
 	const treeProvider = new KrataiTreeProvider();
-	vscode.window.registerTreeDataProvider('kratai-actions', treeProvider);
+	const disposable = vscode.window.registerTreeDataProvider('kratai-actions', treeProvider);
+	context.subscriptions.push(disposable);
+	console.log('🐰 Tree data provider registered successfully');
 
 	// Register sidebar action commands
 	context.subscriptions.push(
