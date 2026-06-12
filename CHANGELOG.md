@@ -2,6 +2,17 @@
 
 All notable changes to the Kratai extension will be documented in this file.
 
+## [1.1.0] - 2026-06-12
+
+### Fixed
+- **CRITICAL**: Fixed sidebar not loading - moved TypeScript from devDependencies to dependencies
+- Fixed tree data provider registration to properly add to extension context subscriptions
+- Changed activation event from "*" to "onStartupFinished" for better performance
+
+### Technical
+- Extension now properly bundles TypeScript compiler (required for parsing TypeScript/JavaScript files)
+- Improved extension activation logging for debugging
+
 ## [1.0.9] - 2026-06-12
 
 ### Fixed
