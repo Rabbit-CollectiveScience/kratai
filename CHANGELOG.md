@@ -2,6 +2,17 @@
 
 All notable changes to the Kratai extension will be documented in this file.
 
+## [1.2.1] - 2026-06-13
+
+### Added
+- **Indeterminate checkbox state** - Parent folders now show "-" when some (but not all) subfolders are selected
+- **Cascading folder selection** - Selecting a parent folder automatically selects all subfolders
+- Automatic parent state updates when child folder selections change
+
+### Improved
+- Configuration panel folder tree now has smarter checkbox behavior
+- Better visual feedback for partial folder selections
+
 ## [1.2.0] - 2026-06-13
 
 ### Added
